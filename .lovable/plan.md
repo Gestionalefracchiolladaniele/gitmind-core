@@ -1,253 +1,144 @@
 
 
-# GitMind AI -- Complete Implementation Plan
+# Piano di Ottimizzazione GitMind AI
 
-## Current State Summary
+## Problemi Identificati
 
-The project currently has:
-- A dark-themed frontend with Auth, Dashboard, and Workspace pages (all using mock data and localStorage)
-- A single edge function (`gitmind-api`) with simulated endpoints
-- Database tables: `users`, `repositories`, `sessions`, `ai_tasks` (all with permissive RLS)
-- No real authentication, no GitHub integration, no real AI
+1. **La chat AI non modifica i file** - L'AI risponde solo con testo/domande invece di applicare modifiche ai file del repository
+2. **Action Pipeline fallisce** - Lo stato mostra FAILED (errore nella pipeline di esecuzione)
+3. **Il ripristino (revert) cancella solo i messaggi** - Non ripristina lo stato dei file
 
-## Platform Constraints
+## Funzionalita Richieste
 
-This project runs on Lovable Cloud, which means:
-- **Backend = Supabase Edge Functions only** (Deno). No Node.js server.
-- **GitHub OAuth is NOT natively supported** by Lovable Cloud (only Google/Apple are). GitHub OAuth must be implemented manually via edge functions.
-- **AI calls** will use the Lovable AI Gateway (pre-configured, no API key needed from you).
-- **GitHub API token** will be stored as an encrypted Supabase secret and used only in edge functions.
+1. **Impostazioni API Key** - Pagina/pannello per scegliere tra Lovable AI o chiavi API personali (OpenAI, Gemini, ecc.)
+2. **Proxy API per app esterne** - Endpoint che permette ad app esterne di usare Lovable AI tramite il tuo progetto
+3. **Revert con ripristino file** - Cliccando "ripristina" i file tornano allo stato salvato nel contesto di quel messaggio
 
 ---
 
-## Phase 1 -- Database Schema Evolution
+## Fase 1: Fix Chat AI - Abilitare Modifiche ai File
 
-Add new columns and tables to support real GitHub integration, autonomous mode, and the expanded state machine.
+**Problema**: L'AI nella chat risponde solo con testo generico e non applica le modifiche ai file.
 
-### Schema Changes
+**Soluzione**: Migliorare il sistema prompt della funzione `ai-chat` per generare patch unificate quando l'utente chiede modifiche, e aggiungere logica nel frontend per riconoscere e applicare le patch direttamente.
 
-1. **Alter `session_mode` enum**: add `'autonomous'` value
-2. **Alter `session_state` enum**: add `'SPEC_LOCKED'` and `'VALIDATING'` states
-3. **Add columns to `repositories`**: `github_repo_id` (text, nullable)
-4. **Add columns to `ai_tasks`**: `retry_count` (integer, default 0)
-5. **Create `autonomous_specs` table**:
-   - `id` (uuid PK)
-   - `session_id` (uuid FK to sessions)
-   - `spec_json` (jsonb)
-   - `locked_at` (timestamptz, nullable)
-   - `created_at` (timestamptz)
-6. **Create `activity_logs` table** for logging:
-   - `id`, `session_id`, `action`, `duration_ms`, `retry_count`, `error_type`, `created_at`
+- Aggiornare `supabase/functions/ai-chat/index.ts`:
+  - Il system prompt istruira l'AI a restituire patch in formato unificato quando vengono richieste modifiche
+  - Aggiungere parsing della risposta per separare spiegazione e patch
+  - Restituire struttura `{ reply, patches?, commitMessage? }` invece di solo `{ reply }`
 
-RLS remains permissive (single personal-use user) but is present on all tables.
+- Aggiornare `AiPanel.tsx`:
+  - Riconoscere quando la risposta contiene patch
+  - Mostrare pulsante "Applica modifiche" che chiama `github.commitFile` per ogni file modificato
+  - Aggiornare il contenuto locale dei file dopo l'applicazione
 
----
+## Fase 2: Fix Action Pipeline
 
-## Phase 2 -- GitHub OAuth via Edge Function
+**Problema**: La pipeline Action mostra FAILED. La transizione di stato `IDLE -> PLANNING` funziona ma le chiamate successive falliscono.
 
-Since Lovable Cloud doesn't support GitHub OAuth natively, we implement it with two edge functions:
+**Soluzione**:
+- La funzione `handleExecuteAction` in `AiPanel.tsx` chiama `onStateChange` che tenta una transizione backend. Il backend richiede transizioni valide ma il codice frontend le forza senza attendere la risposta.
+- Separare la logica: le transizioni di stato nella pipeline Action saranno gestite localmente (solo UI) senza chiamare il backend per ogni step, e il risultato finale aggiornera il backend.
+- Aggiungere gestione errori visibile con toast per ogni step fallito.
 
-### New Edge Functions
+## Fase 3: Impostazioni API Key
 
-1. **`github-auth`** -- Handles the full OAuth flow:
-   - `action: "get_auth_url"` -- Returns GitHub OAuth authorize URL with `repo` + `read:user` scopes
-   - `action: "callback"` -- Exchanges the authorization code for an access token, fetches GitHub user profile, creates/updates the `users` record, and stores the token as a Supabase secret (never sent to the frontend)
-   - Returns a signed JWT or session identifier for frontend auth
+**Nuovo pannello "Settings" accessibile dalla Dashboard o dal Workspace.**
 
-2. **Secrets required**: `GITHUB_CLIENT_ID` and `GITHUB_CLIENT_SECRET` (you will be prompted to provide these)
+- Migrazione DB: nuova tabella `user_settings` con colonne:
+  - `user_id` (uuid, PK, riferimento a users)
+  - `ai_provider` (text: 'lovable' | 'openai' | 'gemini' | 'anthropic')
+  - `custom_api_key` (text, cifrato - la chiave dell'utente)
+  - `created_at`, `updated_at`
 
-### Frontend Changes
+- Nuova pagina `src/pages/Settings.tsx`:
+  - Selezione provider AI (Lovable AI gratuito, OpenAI, Gemini, Anthropic)
+  - Campo per inserire la chiave API personale
+  - Salvataggio sicuro nel database
 
-- Replace the simulated login button on AuthPage with a "Sign in with GitHub" button
-- Add a `/auth/callback` route that receives the GitHub code and calls the edge function
-- Replace localStorage-based auth with a proper session check
+- Aggiornare `ai-chat` e `ai-execute`:
+  - Leggere le impostazioni dell'utente dal DB
+  - Se `ai_provider != 'lovable'`, usare la chiave custom con l'endpoint del provider scelto
+  - Altrimenti usare Lovable AI Gateway come default
 
----
+## Fase 4: Proxy API per App Esterne
 
-## Phase 3 -- GitHub API Service (Edge Function)
+**Nuova edge function `ai-proxy` che permette ad app esterne di usare Lovable AI.**
 
-Extend the `gitmind-api` edge function (or create a new `github-service` function) with real GitHub API calls:
+- Creare `supabase/functions/ai-proxy/index.ts`:
+  - Accetta richieste con header `Authorization: Bearer <user_api_token>`
+  - Proxy verso Lovable AI Gateway
+  - Rate limiting per utente
 
-### Endpoints
+- Migrazione DB: aggiungere colonna `api_token` alla tabella `user_settings`
+  - Token generato automaticamente, visibile nelle Settings
+  - L'utente lo copia e lo usa nella sua app esterna
 
-| Action | What it does |
-|---|---|
-| `github.fetchTree` | `GET /repos/:owner/:repo/git/trees/:branch?recursive=1` -- returns file tree, filters binaries, respects `base_path` |
-| `github.fetchFile` | `GET /repos/:owner/:repo/contents/:path` -- decodes base64, returns text |
-| `github.commitFile` | Fetches current SHA, applies patch, `PUT` update, commit with `[GitMind]` prefix |
-| `github.listRepos` | `GET /user/repos` -- lists user's GitHub repos for attachment |
+- Nella pagina Settings:
+  - Sezione "API Token" con token generabile/rigenerabile
+  - Istruzioni e endpoint da usare nell'app esterna
+  - Esempio di chiamata cURL/fetch
 
-### Error Handling
-- 403 (forbidden), 409 (conflict), 422 (validation), rate limit detection
-- All errors logged to `activity_logs` table
+## Fase 5: Revert con Ripristino File
 
-### Frontend Changes
-- **FileExplorer**: Fetch real file tree from GitHub via edge function instead of mock data
-- **CodeViewer**: Load real file content from GitHub
-- **Dashboard**: "Attach Repository" button opens a modal to search and select from real GitHub repos (max 5)
+**Problema**: Il revert attuale cancella solo i messaggi successivi ma non ripristina i file.
 
----
+**Soluzione**: Ogni messaggio AI gia salva `file_context` (snapshot dei file). Il revert utilizzera questo snapshot per sovrascrivere i file nel repository.
 
-## Phase 4 -- Real AI Orchestration with Lovable AI
+- Aggiornare `AiPanel.tsx`:
+  - Quando l'utente clicca "Ripristina qui":
+    1. Recuperare il `file_context` del messaggio target
+    2. Per ogni file nel contesto, fare commit su GitHub con il contenuto salvato
+    3. Aggiornare `fileContents` locale con i file ripristinati
+    4. Cancellare i messaggi successivi (come gia fa)
+  - Mostrare conferma prima del ripristino ("Questa azione sovrascrivera i file attuali")
+  - Mostrare progresso durante il ripristino dei file
 
-Replace all simulated AI responses with real Lovable AI Gateway calls.
-
-### Architecture (all in edge functions)
-
-1. **Intent Normalization** (deterministic, no AI) -- Keep the existing keyword-based classifier but expand categories:
-   - `feature_addition`, `refactor`, `bugfix`, `ui_update`, `config_change`, `add_tests`
-   - Add risk level assignment (low/medium/high)
-
-2. **Task Compilation** -- Build a structured prompt including:
-   - Classified intent + constraints
-   - Allowed file list (max 8 files)
-   - Code style rules
-   - Strict output format instructions
-
-3. **AI Execute** (new `ai-execute` edge function):
-   - Uses Lovable AI Gateway (`google/gemini-3-flash-preview`)
-   - System prompt enforces: modify only provided files, return unified diff, provide commit message, no explanation text
-   - Validates response schema
-   - Retry logic: max 2 retries on malformed output
-   - Handles 429/402 errors gracefully
-
-4. **AI Chat** (new `ai-chat` edge function):
-   - Streaming chat via Lovable AI for the Chat tab
-   - Context-aware: includes selected file contents in the conversation
-
-### Frontend Changes
-- **AiPanel Chat tab**: Real streaming responses from Lovable AI
-- **AiPanel Action tab**: Real orchestration pipeline (normalize -> compile -> execute -> validate -> commit)
-- Show real patches in the UI with diff highlighting
-- Show real commit results
+- Aggiornare il salvataggio dei messaggi:
+  - Salvare il `file_context` anche sui messaggi dell'assistente (non solo dell'utente) per avere lo snapshot completo ad ogni punto
 
 ---
 
-## Phase 5 -- Diff Validation Engine
+## Dettagli Tecnici
 
-Enhance the existing `diff.validate` action:
-
-### Validation Rules
-- Patch format validity (unified diff with `---`, `+++`, `@@` headers)
-- Only allowed files modified (cross-check with task's file list)
-- **Blocked files**: `package.json`, `.env`, any config file outside `base_path`
-- **Dangerous pattern detection**: eval(), process.exit(), rm -rf, etc.
-- Return structured validation result with pass/fail and specific error messages
-
----
-
-## Phase 6 -- Real Commit Engine
-
-Replace `commit.simulate` with real GitHub commits:
-
-### Flow
-1. Fetch current file SHA from GitHub
-2. Parse unified diff, apply patch to current content
-3. `PUT /repos/:owner/:repo/contents/:path` with new content + SHA
-4. Commit message format: `[GitMind] <ai-generated message>`
-5. Log commit to `activity_logs`
-
-### Safety
-- Confirm with user before committing (UI confirmation dialog)
-- Only commit to the repository's `default_branch` (or a configurable branch)
-
----
-
-## Phase 7 -- Autonomous Builder Mode
-
-### New UI Tab
-Add a third tab "Autonomous" to the AiPanel.
-
-### Flow
-1. **Spec Generation**: User describes what they want in natural language. AI generates a structured SPEC JSON:
-   ```
-   { purpose, features, routes, data_models, ui_pages, constraints }
-   ```
-2. **Spec Review**: User reviews and confirms the spec
-3. **Spec Lock**: State transitions to `SPEC_LOCKED`, spec saved to `autonomous_specs` table
-4. **Step Build**: Deterministic steps executed sequentially:
-   - Setup -> Auth -> DB -> Backend -> Frontend -> Wiring -> Validation
-   - Each step: AI execute -> Validate diff -> Commit
-5. **Validation Loop**: Max 5 iterations per step. Pass -> next step. Fail after 5 -> `FAILED`
-
-### State Machine Updates
-- `IDLE -> PLANNING -> SPEC_LOCKED -> EXECUTING -> VALIDATING -> DONE`
-- `VALIDATING` can loop back to `EXECUTING` (retry)
-- Any state can transition to `FAILED`
-
----
-
-## Phase 8 -- Security and Production Hardening
-
-### Edge Function Security
-- All endpoints validate the user's auth token
-- Repository ownership validation (user can only access their own repos)
-- Session ownership validation
-
-### Rate Limiting (in edge functions)
-- AI calls: max 20 per session
-- Commits: max 5 per minute
-- Track in `activity_logs`
-
-### Logging
-- Log: `session_id`, `action`, `duration_ms`, `retry_count`, `error_type`
-- Never log: tokens, full code content, raw AI output
-
-### Base Path Enforcement
-- No file operations allowed outside the repository's `base_path`
-
----
-
-## Implementation Order
-
-The work will be done in this sequence across multiple prompts:
-
-1. **Phase 1** -- Database migration (schema changes)
-2. **Phase 2** -- GitHub OAuth (requires you to provide `GITHUB_CLIENT_ID` and `GITHUB_CLIENT_SECRET`)
-3. **Phase 3** -- GitHub API integration (file tree, file content, repo listing)
-4. **Phase 4** -- AI orchestration with Lovable AI (chat streaming + action pipeline)
-5. **Phase 5** -- Diff validation engine
-6. **Phase 6** -- Real commit engine
-7. **Phase 7** -- Autonomous builder mode
-8. **Phase 8** -- Security hardening, rate limiting, logging
-
----
-
-## Technical Details
-
-### Edge Functions Structure
+### Struttura File Modificati/Creati
 
 ```text
-supabase/functions/
-  gitmind-api/index.ts      -- Main API (sessions, repos, state machine, orchestration)
-  github-auth/index.ts       -- GitHub OAuth flow
-  ai-chat/index.ts           -- Streaming AI chat via Lovable AI Gateway
-  ai-execute/index.ts        -- AI code generation + structured output
+MODIFICATI:
+  supabase/functions/ai-chat/index.ts      -- prompt migliorato + output strutturato
+  supabase/functions/ai-execute/index.ts    -- supporto custom API keys
+  supabase/functions/gitmind-api/index.ts   -- azioni user_settings CRUD
+  src/components/workspace/AiPanel.tsx      -- applicazione patch, revert file, UI migliorata
+  src/pages/Workspace.tsx                   -- passaggio props aggiuntive
+  src/lib/api.ts                           -- nuovi endpoint settings + proxy
+  src/App.tsx                              -- rotta /settings
+
+CREATI:
+  supabase/functions/ai-proxy/index.ts     -- proxy API per app esterne
+  src/pages/Settings.tsx                   -- pagina impostazioni API
+  supabase/migrations/xxx_user_settings.sql -- tabella user_settings
 ```
 
-### State Machine (Updated)
+### Flusso Revert Migliorato
 
 ```text
-IDLE -> PLANNING -> SPEC_LOCKED -> EXECUTING -> VALIDATING -> DONE
-                                                    |            |
-                                                    +-- retry ---+
-Any state -> FAILED
-DONE -> IDLE
-FAILED -> IDLE
+Utente clicca "Ripristina qui" su messaggio N
+    |
+    v
+Conferma dialog ("I file torneranno allo stato del messaggio N")
+    |
+    v
+Leggi file_context del messaggio N
+    |
+    v
+Per ogni file nel contesto:
+  -> commitFile(path, contenuto_salvato, sha_attuale)
+  -> Aggiorna fileContents locale
+    |
+    v
+Cancella messaggi dopo N dal DB
+    |
+    v
+Aggiorna UI chat + file viewer
 ```
-
-### Secrets Needed
-- `GITHUB_CLIENT_ID` -- From your GitHub OAuth App
-- `GITHUB_CLIENT_SECRET` -- From your GitHub OAuth App
-- `LOVABLE_API_KEY` -- Already configured (for AI Gateway)
-
-### Key Files Modified
-- `src/pages/AuthPage.tsx` -- Real GitHub OAuth login
-- `src/pages/Dashboard.tsx` -- Real repo listing and attachment
-- `src/components/workspace/FileExplorer.tsx` -- Real GitHub file tree
-- `src/components/workspace/CodeViewer.tsx` -- Real GitHub file content
-- `src/components/workspace/AiPanel.tsx` -- Real AI chat, action pipeline, autonomous mode
-- `src/pages/Workspace.tsx` -- Real session management
-- `src/lib/api.ts` -- Updated API client for all new endpoints
-- `src/lib/types.ts` -- Updated types for new states and models
 
