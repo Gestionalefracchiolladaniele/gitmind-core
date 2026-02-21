@@ -236,6 +236,44 @@ export type Database = {
           },
         ]
       }
+      user_settings: {
+        Row: {
+          ai_provider: string
+          api_token: string | null
+          created_at: string
+          custom_api_key: string | null
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          ai_provider?: string
+          api_token?: string | null
+          created_at?: string
+          custom_api_key?: string | null
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          ai_provider?: string
+          api_token?: string | null
+          created_at?: string
+          custom_api_key?: string | null
+          id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_settings_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       users: {
         Row: {
           avatar_url: string | null

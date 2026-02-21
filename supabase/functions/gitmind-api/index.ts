@@ -321,6 +321,43 @@ serve(async (req) => {
         break;
       }
 
+      // ===== USER SETTINGS =====
+      case "settings.get": {
+        const { userId } = body;
+        const { data, error } = await supabase.from("user_settings").select("ai_provider, custom_api_key, api_token").eq("user_id", userId).single();
+        if (error && error.code !== "PGRST116") throw error;
+        result = data || { ai_provider: "lovable", custom_api_key: null, api_token: null };
+        break;
+      }
+
+      case "settings.save": {
+        const { userId, ai_provider, custom_api_key } = body;
+        // Upsert
+        const { data: existing } = await supabase.from("user_settings").select("id").eq("user_id", userId).single();
+        if (existing) {
+          const { error } = await supabase.from("user_settings").update({ ai_provider, custom_api_key }).eq("user_id", userId);
+          if (error) throw error;
+        } else {
+          const { error } = await supabase.from("user_settings").insert({ user_id: userId, ai_provider, custom_api_key });
+          if (error) throw error;
+        }
+        result = { success: true };
+        break;
+      }
+
+      case "settings.regenerateToken": {
+        const { userId } = body;
+        const newToken = crypto.randomUUID().replace(/-/g, '') + crypto.randomUUID().replace(/-/g, '');
+        const { data: existing } = await supabase.from("user_settings").select("id").eq("user_id", userId).single();
+        if (existing) {
+          await supabase.from("user_settings").update({ api_token: newToken }).eq("user_id", userId);
+        } else {
+          await supabase.from("user_settings").insert({ user_id: userId, api_token: newToken });
+        }
+        result = { api_token: newToken };
+        break;
+      }
+
       // ===== AUTONOMOUS MODE =====
       case "autonomous.saveSpec": {
         const { sessionId, specJson } = body;

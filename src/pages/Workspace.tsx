@@ -87,6 +87,10 @@ const Workspace = () => {
     }
   }, [session]);
 
+  const handleFileContentsUpdate = useCallback((updates: Record<string, string>) => {
+    setFileContents(prev => ({ ...prev, ...updates }));
+  }, []);
+
   if (loading) {
     return (
       <div className="flex h-screen items-center justify-center bg-background">
@@ -155,6 +159,7 @@ const Workspace = () => {
               userId={user?.id || ''}
               openFiles={openFiles}
               fileContents={fileContents}
+              onFileContentsUpdate={handleFileContentsUpdate}
             />
           </div>
         )}
