@@ -219,7 +219,7 @@ const Settings = () => {
                 <Zap className="h-3 w-3 text-primary" />
                 <span className="font-medium text-foreground">Modelli disponibili</span>
               </div>
-              <p>google/gemini-2.5-flash, google/gemini-2.5-pro, openai/gpt-5, openai/gpt-5-mini</p>
+              <p>google/gemini-2.5-pro, google/gemini-2.5-flash, openai/gpt-5, openai/gpt-5-mini, openai/gpt-5.2</p>
             </div>
           </div>
         </section>
