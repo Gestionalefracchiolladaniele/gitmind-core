@@ -69,8 +69,8 @@ export const api = {
     callEdge<{ repos: GitHubRepo[] }>('gitmind-api', { action: 'github.listUserRepos', userId }),
 
   // ===== AI =====
-  aiChat: (messages: { role: string; content: string }[], fileContext?: string) =>
-    callEdge<{ reply: string }>('ai-chat', { messages, fileContext }),
+  aiChat: (messages: { role: string; content: string }[], fileContext?: string, userId?: string) =>
+    callEdge<{ reply: string; patches?: { file: string; content: string }[]; commitMessage?: string }>('ai-chat', { messages, fileContext, userId }),
 
   normalizeIntent: (input: string) =>
     callEdge<IntentResult>('ai-execute', { action: 'normalize', input }),
@@ -93,6 +93,16 @@ export const api = {
 
   revertToMessage: (sessionId: string, messageId: string) =>
     callEdge<{ messages: { id: string; session_id: string; role: string; content: string; file_context: Record<string, string> | null; created_at: string }[] }>('gitmind-api', { action: 'chat.revertToMessage', sessionId, messageId }),
+
+  // ===== USER SETTINGS =====
+  getUserSettings: (userId: string) =>
+    callEdge<{ ai_provider: string; custom_api_key: string | null; api_token: string | null }>('gitmind-api', { action: 'settings.get', userId }),
+
+  saveUserSettings: (userId: string, settings: { ai_provider: string; custom_api_key: string | null }) =>
+    callEdge<{ success: boolean }>('gitmind-api', { action: 'settings.save', userId, ...settings }),
+
+  regenerateApiToken: (userId: string) =>
+    callEdge<{ api_token: string }>('gitmind-api', { action: 'settings.regenerateToken', userId }),
 
   // ===== AUTONOMOUS =====
   saveSpec: (sessionId: string, specJson: Record<string, unknown>) =>

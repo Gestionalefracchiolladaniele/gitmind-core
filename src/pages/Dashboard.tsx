@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { GitBranch, Plus, Clock, ArrowRight, LogOut, Database, Trash2, Search, Loader2 } from 'lucide-react';
+import { GitBranch, Plus, Clock, ArrowRight, LogOut, Database, Trash2, Search, Loader2, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
@@ -105,6 +105,9 @@ const Dashboard = () => {
               <Database className="h-3 w-3" />
               <span>{repos.length}/5 repos</span>
             </div>
+            <Button variant="ghost" size="sm" onClick={() => navigate('/settings')}>
+              <Settings className="h-4 w-4" />
+            </Button>
             <Button variant="ghost" size="sm" onClick={handleLogout}>
               <LogOut className="h-4 w-4" />
             </Button>
