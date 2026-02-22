@@ -10,7 +10,7 @@ import { useAuth } from '@/lib/auth';
 import { api } from '@/lib/api';
 
 const PROVIDERS = [
-  { value: 'lovable', label: 'Lovable AI (Gratuito)', description: 'Usa Gemini Flash tramite Lovable Gateway' },
+  { value: 'lovable', label: 'Lovable AI (GPT-5.2)', description: 'Usa OpenAI GPT-5.2 tramite Lovable Gateway' },
   { value: 'openai', label: 'OpenAI', description: 'GPT-4o e modelli OpenAI' },
   { value: 'gemini', label: 'Google Gemini', description: 'Gemini Pro e Flash' },
   { value: 'anthropic', label: 'Anthropic', description: 'Claude e modelli Anthropic' },

@@ -15,7 +15,7 @@ const PROVIDER_ENDPOINTS: Record<string, string> = {
 };
 
 const PROVIDER_MODELS: Record<string, string> = {
-  lovable: "google/gemini-2.5-pro",
+  lovable: "openai/gpt-5.2",
   openai: "gpt-4o",
   gemini: "gemini-2.5-pro",
   anthropic: "claude-sonnet-4-20250514",

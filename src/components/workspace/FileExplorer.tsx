@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ChevronRight, ChevronDown, File, Folder, Search, Loader2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { api } from '@/lib/api';
@@ -147,11 +147,11 @@ const FileExplorer = ({ onFileSelect, selectedFile, userId, repo }: FileExplorer
   );
 };
 
-const TreeNode = ({
-  node, depth, expanded, onToggle, onSelect, selectedFile,
-}: {
+const TreeNode: React.FC<{
   node: FileNode; depth: number; expanded: Set<string>;
   onToggle: (path: string) => void; onSelect: (path: string) => void; selectedFile: string | null;
+}> = ({
+  node, depth, expanded, onToggle, onSelect, selectedFile,
 }) => {
   const isExpanded = expanded.has(node.path);
   const isSelected = node.path === selectedFile;
