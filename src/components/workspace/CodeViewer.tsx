@@ -1,3 +1,4 @@
+import * as React from 'react';
 import { X, FileCode2 } from 'lucide-react';
 
 interface CodeViewerProps {

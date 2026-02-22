@@ -206,7 +206,7 @@ const AiPanel = ({ sessionState, onStateChange, session, repo, userId, openFiles
     try {
       const updates: Record<string, string> = {};
 
-      for (const [filePath, content] of Object.entries(revertDialog.fileContext)) {
+      for (const [filePath, content] of Object.entries(revertDialog.fileContext) as [string, string][]) {
         try {
           const fileData = await api.fetchFile(userId, repo.owner, repo.name, filePath);
           await api.commitFile({
@@ -214,12 +214,12 @@ const AiPanel = ({ sessionState, onStateChange, session, repo, userId, openFiles
             owner: repo.owner,
             name: repo.name,
             path: filePath,
-            content,
+            content: content as string,
             message: `[GitMind] Revert file to previous state`,
             sha: fileData.sha,
             sessionId: session.id,
           });
-          updates[filePath] = content;
+          updates[filePath] = content as string;
         } catch (e: any) {
           console.error(`Failed to revert ${filePath}:`, e);
         }
