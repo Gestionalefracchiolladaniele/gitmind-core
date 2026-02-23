@@ -7,19 +7,20 @@ const corsHeaders = {
 };
 
 // AI provider endpoints
-const PROVIDER_ENDPOINTS: Record<string, string> = {
-  lovable: "https://ai.gateway.lovable.dev/v1/chat/completions",
-  openai: "https://api.openai.com/v1/chat/completions",
-  gemini: "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions",
-  anthropic: "https://api.anthropic.com/v1/messages",
-};
+const LOVABLE_ENDPOINT = "https://ai.gateway.lovable.dev/v1/chat/completions";
 
-const PROVIDER_MODELS: Record<string, string> = {
-  lovable: "openai/gpt-5.2",
-  openai: "gpt-4o",
-  gemini: "gemini-2.5-pro",
-  anthropic: "claude-sonnet-4-20250514",
-};
+const LOVABLE_MODELS = [
+  "google/gemini-2.5-pro",
+  "google/gemini-2.5-flash",
+  "google/gemini-2.5-flash-lite",
+  "google/gemini-3-flash-preview",
+  "google/gemini-3-pro-preview",
+  "google/gemini-3-pro-image-preview",
+  "openai/gpt-5",
+  "openai/gpt-5-mini",
+  "openai/gpt-5-nano",
+  "openai/gpt-5.2",
+];
 
 async function getUserSettings(supabase: any, userId?: string) {
   if (!userId) return null;
@@ -27,34 +28,7 @@ async function getUserSettings(supabase: any, userId?: string) {
   return data;
 }
 
-async function callAI(apiKey: string, endpoint: string, model: string, messages: any[], provider: string) {
-  if (provider === "anthropic") {
-    // Anthropic has a different API format
-    const systemMsg = messages.find((m: any) => m.role === "system");
-    const otherMsgs = messages.filter((m: any) => m.role !== "system");
-    const res = await fetch(endpoint, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-api-key": apiKey,
-        "anthropic-version": "2023-06-01",
-      },
-      body: JSON.stringify({
-        model,
-        system: systemMsg?.content || "",
-        messages: otherMsgs,
-        max_tokens: 4096,
-      }),
-    });
-    if (!res.ok) {
-      const err = await res.text();
-      throw new Error(`Anthropic error ${res.status}: ${err}`);
-    }
-    const data = await res.json();
-    return data.content?.[0]?.text || "";
-  }
-
-  // OpenAI-compatible (Lovable, OpenAI, Gemini)
+async function callAI(apiKey: string, endpoint: string, model: string, messages: any[]) {
   const res = await fetch(endpoint, {
     method: "POST",
     headers: {
@@ -64,7 +38,6 @@ async function callAI(apiKey: string, endpoint: string, model: string, messages:
     body: JSON.stringify({
       model,
       messages,
-      max_tokens: 4096,
       stream: false,
     }),
   });
@@ -87,32 +60,28 @@ serve(async (req) => {
   }
 
   try {
-    const { messages, fileContext, userId } = await req.json();
+    const { messages, fileContext, userId, model: requestedModel } = await req.json();
     
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
     );
 
-    // Get user settings to determine provider
+    // Get user settings to determine model preference
     const settings = await getUserSettings(supabase, userId);
-    const provider = settings?.ai_provider || "lovable";
-    let apiKey: string;
-    let endpoint: string;
-    let model: string;
-
-    if (provider !== "lovable" && settings?.custom_api_key) {
-      apiKey = settings.custom_api_key;
-      endpoint = PROVIDER_ENDPOINTS[provider] || PROVIDER_ENDPOINTS.lovable;
-      model = PROVIDER_MODELS[provider] || PROVIDER_MODELS.lovable;
-    } else {
-      apiKey = Deno.env.get("LOVABLE_API_KEY") || "";
-      endpoint = PROVIDER_ENDPOINTS.lovable;
-      model = PROVIDER_MODELS.lovable;
+    
+    // Use requested model, or user's saved model, or default
+    let model = requestedModel || settings?.ai_provider || "google/gemini-3-flash-preview";
+    
+    // Validate model is in allowed list
+    if (!LOVABLE_MODELS.includes(model)) {
+      model = "google/gemini-3-flash-preview";
     }
 
+    const apiKey = Deno.env.get("LOVABLE_API_KEY") || "";
+
     if (!apiKey) {
-      return new Response(JSON.stringify({ error: "AI not configured. Set an API key in Settings." }), {
+      return new Response(JSON.stringify({ error: "AI not configured." }), {
         status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
@@ -154,7 +123,7 @@ ${fileContext ? `\nCurrent file context:\n${fileContext}` : ""}`;
       })),
     ];
 
-    const rawReply = await callAI(apiKey, endpoint, model, aiMessages, provider);
+    const rawReply = await callAI(apiKey, LOVABLE_ENDPOINT, model, aiMessages);
 
     // Parse response: check for json-patches block
     const patchMatch = rawReply.match(/```json-patches\s*\n([\s\S]*?)\n```/);
