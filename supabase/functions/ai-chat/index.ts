@@ -28,34 +28,7 @@ async function getUserSettings(supabase: any, userId?: string) {
   return data;
 }
 
-async function callAI(apiKey: string, endpoint: string, model: string, messages: any[], provider: string) {
-  if (provider === "anthropic") {
-    // Anthropic has a different API format
-    const systemMsg = messages.find((m: any) => m.role === "system");
-    const otherMsgs = messages.filter((m: any) => m.role !== "system");
-    const res = await fetch(endpoint, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-api-key": apiKey,
-        "anthropic-version": "2023-06-01",
-      },
-      body: JSON.stringify({
-        model,
-        system: systemMsg?.content || "",
-        messages: otherMsgs,
-        max_tokens: 4096,
-      }),
-    });
-    if (!res.ok) {
-      const err = await res.text();
-      throw new Error(`Anthropic error ${res.status}: ${err}`);
-    }
-    const data = await res.json();
-    return data.content?.[0]?.text || "";
-  }
-
-  // OpenAI-compatible (Lovable, OpenAI, Gemini)
+async function callAI(apiKey: string, endpoint: string, model: string, messages: any[]) {
   const res = await fetch(endpoint, {
     method: "POST",
     headers: {
@@ -65,7 +38,6 @@ async function callAI(apiKey: string, endpoint: string, model: string, messages:
     body: JSON.stringify({
       model,
       messages,
-      max_tokens: 4096,
       stream: false,
     }),
   });
