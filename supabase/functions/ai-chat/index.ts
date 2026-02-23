@@ -152,10 +152,23 @@ ${fileContext ? `\nCurrent file context:\n${fileContext}` : ""}`;
         const patchData = JSON.parse(patchMatch[1]);
         const explanation = rawReply.replace(/```json-patches[\s\S]*?```/, "").trim();
         
+        // Filter out any patches targeting protected files
+        const safePatches = (patchData.patches || []).filter(
+          (p: { file: string }) => !isProtectedFile(p.file)
+        );
+        const blockedFiles = (patchData.patches || [])
+          .filter((p: { file: string }) => isProtectedFile(p.file))
+          .map((p: { file: string }) => p.file);
+        
+        const warning = blockedFiles.length > 0
+          ? `\n\n⚠️ Le modifiche ai seguenti file protetti sono state bloccate: ${blockedFiles.join(", ")}`
+          : "";
+        
         return new Response(JSON.stringify({
-          reply: explanation || "Modifiche pronte da applicare.",
-          patches: patchData.patches || [],
+          reply: (explanation || "Modifiche pronte da applicare.") + warning,
+          patches: safePatches,
           commitMessage: patchData.commitMessage || "[GitMind] AI-generated changes",
+        }), {
         }), {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
