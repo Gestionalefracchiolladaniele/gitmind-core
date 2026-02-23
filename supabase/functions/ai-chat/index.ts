@@ -7,19 +7,20 @@ const corsHeaders = {
 };
 
 // AI provider endpoints
-const PROVIDER_ENDPOINTS: Record<string, string> = {
-  lovable: "https://ai.gateway.lovable.dev/v1/chat/completions",
-  openai: "https://api.openai.com/v1/chat/completions",
-  gemini: "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions",
-  anthropic: "https://api.anthropic.com/v1/messages",
-};
+const LOVABLE_ENDPOINT = "https://ai.gateway.lovable.dev/v1/chat/completions";
 
-const PROVIDER_MODELS: Record<string, string> = {
-  lovable: "openai/gpt-5.2",
-  openai: "gpt-4o",
-  gemini: "gemini-2.5-pro",
-  anthropic: "claude-sonnet-4-20250514",
-};
+const LOVABLE_MODELS = [
+  "google/gemini-2.5-pro",
+  "google/gemini-2.5-flash",
+  "google/gemini-2.5-flash-lite",
+  "google/gemini-3-flash-preview",
+  "google/gemini-3-pro-preview",
+  "google/gemini-3-pro-image-preview",
+  "openai/gpt-5",
+  "openai/gpt-5-mini",
+  "openai/gpt-5-nano",
+  "openai/gpt-5.2",
+];
 
 async function getUserSettings(supabase: any, userId?: string) {
   if (!userId) return null;
