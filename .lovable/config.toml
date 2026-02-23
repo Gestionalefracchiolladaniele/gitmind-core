@@ -1,2 +1,2 @@
 [run]
-"build:dev" = "vite build --mode development"
+"build:dev" = "npx vite build --mode development"
