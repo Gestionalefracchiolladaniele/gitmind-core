@@ -169,7 +169,6 @@ ${fileContext ? `\nCurrent file context:\n${fileContext}` : ""}`;
           patches: safePatches,
           commitMessage: patchData.commitMessage || "[GitMind] AI-generated changes",
         }), {
-        }), {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       } catch {
