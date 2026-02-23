@@ -123,7 +123,7 @@ ${fileContext ? `\nCurrent file context:\n${fileContext}` : ""}`;
       })),
     ];
 
-    const rawReply = await callAI(apiKey, endpoint, model, aiMessages, provider);
+    const rawReply = await callAI(apiKey, LOVABLE_ENDPOINT, model, aiMessages);
 
     // Parse response: check for json-patches block
     const patchMatch = rawReply.match(/```json-patches\s*\n([\s\S]*?)\n```/);
