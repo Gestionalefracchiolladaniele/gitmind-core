@@ -9,11 +9,17 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/lib/auth';
 import { api } from '@/lib/api';
 
-const PROVIDERS = [
-  { value: 'lovable', label: 'Lovable AI (GPT-5.2)', description: 'Usa OpenAI GPT-5.2 tramite Lovable Gateway' },
-  { value: 'openai', label: 'OpenAI', description: 'GPT-4o e modelli OpenAI' },
-  { value: 'gemini', label: 'Google Gemini', description: 'Gemini Pro e Flash' },
-  { value: 'anthropic', label: 'Anthropic', description: 'Claude e modelli Anthropic' },
+const MODELS = [
+  { value: 'google/gemini-3-flash-preview', label: 'Gemini 3 Flash Preview', description: 'Veloce, bilanciato' },
+  { value: 'google/gemini-3-pro-preview', label: 'Gemini 3 Pro Preview', description: 'Ragionamento avanzato' },
+  { value: 'google/gemini-2.5-pro', label: 'Gemini 2.5 Pro', description: 'Top-tier, contesto ampio' },
+  { value: 'google/gemini-2.5-flash', label: 'Gemini 2.5 Flash', description: 'Buon bilanciamento costo/qualità' },
+  { value: 'google/gemini-2.5-flash-lite', label: 'Gemini 2.5 Flash Lite', description: 'Più veloce e economico' },
+  { value: 'google/gemini-3-pro-image-preview', label: 'Gemini 3 Pro Image', description: 'Generazione immagini' },
+  { value: 'openai/gpt-5', label: 'GPT-5', description: 'Potente, ragionamento complesso' },
+  { value: 'openai/gpt-5-mini', label: 'GPT-5 Mini', description: 'Bilanciato, costo ridotto' },
+  { value: 'openai/gpt-5-nano', label: 'GPT-5 Nano', description: 'Veloce, task semplici' },
+  { value: 'openai/gpt-5.2', label: 'GPT-5.2', description: 'Ultimo modello OpenAI' },
 ];
 
 const Settings = () => {
