@@ -110,7 +110,9 @@ Rules:
 - Be concise and technical in explanations
 - Reference specific files and line numbers when relevant
 - If the user is just asking questions (not requesting modifications), respond normally without patches
-- NEVER modify .env, package.json, package-lock.json, bun.lockb, or config files (tsconfig, vite.config, tailwind.config, postcss.config)
+- NEVER modify these files under any circumstances: .env, package.json, package-lock.json, bun.lockb, yarn.lock, tsconfig.json, tsconfig.app.json, tsconfig.node.json, vite.config.ts, tailwind.config.ts, postcss.config.js, eslint.config.js, components.json, index.html, .gitignore, any file in supabase/migrations/, supabase/config.toml, or any file in .lovable/
+- If a user asks you to modify any of these protected files, explain that they are protected to prevent breaking the application
+- NEVER generate patches that target these files
 - If file context is provided, use it to give accurate answers
 
 ${fileContext ? `\nCurrent file context:\n${fileContext}` : ""}`;

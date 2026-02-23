@@ -6,9 +6,22 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-// Blocked files that AI must never modify
-const BLOCKED_FILES = [".env", "package-lock.json", "yarn.lock", "bun.lockb"];
-const BLOCKED_PATTERNS = [/\.env\./, /config\.toml$/];
+// Blocked files that AI must never modify — protects app integrity
+const BLOCKED_FILES = [
+  ".env", "package.json", "package-lock.json", "yarn.lock", "bun.lockb",
+  "tsconfig.json", "tsconfig.app.json", "tsconfig.node.json",
+  "vite.config.ts", "vite.config.js",
+  "tailwind.config.ts", "tailwind.config.js",
+  "postcss.config.js", "postcss.config.cjs",
+  "eslint.config.js", ".eslintrc.js", ".eslintrc.json",
+  "components.json", "index.html",
+  ".gitignore", "README.md",
+];
+const BLOCKED_PATTERNS = [
+  /\.env\./, /config\.toml$/, /\.lock$/, /\.lockb$/,
+  /supabase\/config/, /supabase\/migrations/,
+  /\.lovable\//,
+];
 
 function isBlockedFile(path: string): boolean {
   const name = path.split("/").pop() || "";
