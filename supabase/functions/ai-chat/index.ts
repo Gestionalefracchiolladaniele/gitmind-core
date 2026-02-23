@@ -110,7 +110,7 @@ Rules:
 - Be concise and technical in explanations
 - Reference specific files and line numbers when relevant
 - If the user is just asking questions (not requesting modifications), respond normally without patches
-- Never modify .env, package-lock.json, or config files
+- NEVER modify .env, package.json, package-lock.json, bun.lockb, or config files (tsconfig, vite.config, tailwind.config, postcss.config)
 - If file context is provided, use it to give accurate answers
 
 ${fileContext ? `\nCurrent file context:\n${fileContext}` : ""}`;
