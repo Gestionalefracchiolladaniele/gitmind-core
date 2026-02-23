@@ -28,10 +28,7 @@ const Settings = () => {
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [provider, setProvider] = useState('lovable');
-  const [customApiKey, setCustomApiKey] = useState('');
-  const [apiToken, setApiToken] = useState('');
-  const [copied, setCopied] = useState(false);
+  const [selectedModel, setSelectedModel] = useState('google/gemini-3-flash-preview');
   const [regenerating, setRegenerating] = useState(false);
 
   useEffect(() => {
