@@ -9,6 +9,23 @@ const corsHeaders = {
 // AI provider endpoints
 const LOVABLE_ENDPOINT = "https://ai.gateway.lovable.dev/v1/chat/completions";
 
+// Protected files — AI must never generate patches for these
+const PROTECTED_FILES = new Set([
+  ".env", "package.json", "package-lock.json", "yarn.lock", "bun.lockb",
+  "tsconfig.json", "tsconfig.app.json", "tsconfig.node.json",
+  "vite.config.ts", "vite.config.js", "tailwind.config.ts", "tailwind.config.js",
+  "postcss.config.js", "postcss.config.cjs", "eslint.config.js",
+  "components.json", "index.html", ".gitignore",
+  "supabase/config.toml",
+]);
+const PROTECTED_PATTERNS = [/\.env\./, /\.lock$/, /\.lockb$/, /supabase\/migrations\//, /\.lovable\//];
+
+function isProtectedFile(path: string): boolean {
+  const name = path.split("/").pop() || "";
+  if (PROTECTED_FILES.has(name) || PROTECTED_FILES.has(path)) return true;
+  return PROTECTED_PATTERNS.some(p => p.test(path));
+}
+
 const LOVABLE_MODELS = [
   "google/gemini-2.5-pro",
   "google/gemini-2.5-flash",
@@ -110,7 +127,9 @@ Rules:
 - Be concise and technical in explanations
 - Reference specific files and line numbers when relevant
 - If the user is just asking questions (not requesting modifications), respond normally without patches
-- NEVER modify .env, package.json, package-lock.json, bun.lockb, or config files (tsconfig, vite.config, tailwind.config, postcss.config)
+- NEVER modify these files under any circumstances: .env, package.json, package-lock.json, bun.lockb, yarn.lock, tsconfig.json, tsconfig.app.json, tsconfig.node.json, vite.config.ts, tailwind.config.ts, postcss.config.js, eslint.config.js, components.json, index.html, .gitignore, any file in supabase/migrations/, supabase/config.toml, or any file in .lovable/
+- If a user asks you to modify any of these protected files, explain that they are protected to prevent breaking the application
+- NEVER generate patches that target these files
 - If file context is provided, use it to give accurate answers
 
 ${fileContext ? `\nCurrent file context:\n${fileContext}` : ""}`;
@@ -133,9 +152,21 @@ ${fileContext ? `\nCurrent file context:\n${fileContext}` : ""}`;
         const patchData = JSON.parse(patchMatch[1]);
         const explanation = rawReply.replace(/```json-patches[\s\S]*?```/, "").trim();
         
+        // Filter out any patches targeting protected files
+        const safePatches = (patchData.patches || []).filter(
+          (p: { file: string }) => !isProtectedFile(p.file)
+        );
+        const blockedFiles = (patchData.patches || [])
+          .filter((p: { file: string }) => isProtectedFile(p.file))
+          .map((p: { file: string }) => p.file);
+        
+        const warning = blockedFiles.length > 0
+          ? `\n\n⚠️ Le modifiche ai seguenti file protetti sono state bloccate: ${blockedFiles.join(", ")}`
+          : "";
+        
         return new Response(JSON.stringify({
-          reply: explanation || "Modifiche pronte da applicare.",
-          patches: patchData.patches || [],
+          reply: (explanation || "Modifiche pronte da applicare.") + warning,
+          patches: safePatches,
           commitMessage: patchData.commitMessage || "[GitMind] AI-generated changes",
         }), {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
