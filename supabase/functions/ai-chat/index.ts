@@ -9,6 +9,23 @@ const corsHeaders = {
 // AI provider endpoints
 const LOVABLE_ENDPOINT = "https://ai.gateway.lovable.dev/v1/chat/completions";
 
+// Protected files — AI must never generate patches for these
+const PROTECTED_FILES = new Set([
+  ".env", "package.json", "package-lock.json", "yarn.lock", "bun.lockb",
+  "tsconfig.json", "tsconfig.app.json", "tsconfig.node.json",
+  "vite.config.ts", "vite.config.js", "tailwind.config.ts", "tailwind.config.js",
+  "postcss.config.js", "postcss.config.cjs", "eslint.config.js",
+  "components.json", "index.html", ".gitignore",
+  "supabase/config.toml",
+]);
+const PROTECTED_PATTERNS = [/\.env\./, /\.lock$/, /\.lockb$/, /supabase\/migrations\//, /\.lovable\//];
+
+function isProtectedFile(path: string): boolean {
+  const name = path.split("/").pop() || "";
+  if (PROTECTED_FILES.has(name) || PROTECTED_FILES.has(path)) return true;
+  return PROTECTED_PATTERNS.some(p => p.test(path));
+}
+
 const LOVABLE_MODELS = [
   "google/gemini-2.5-pro",
   "google/gemini-2.5-flash",
