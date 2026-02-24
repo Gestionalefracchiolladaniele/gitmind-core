@@ -6,6 +6,7 @@ interface AuthContextType {
   user: User | null;
   isLoading: boolean;
   login: () => Promise<void>;
+  loginDemo: () => void;
   logout: () => void;
   handleCallback: (code: string) => Promise<void>;
 }
@@ -19,7 +20,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const storedUserId = localStorage.getItem('gitmind_user_id');
     if (storedUserId) {
-      // Check for simulated user first
       const storedUser = localStorage.getItem('gitmind_user');
       if (storedUser) {
         try {
@@ -38,30 +38,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const login = async () => {
-    try {
-      const redirectUri = `${window.location.origin}/auth/callback`;
-      const { url } = await api.getAuthUrl(redirectUri);
-      window.location.href = url;
-    } catch (e: any) {
-      // If GitHub OAuth not configured, use simulated login
-      console.warn('GitHub OAuth not configured, using simulated login:', e.message);
-      const simulatedUser: User = {
-        id: crypto.randomUUID(),
-        name: 'Developer',
-        avatar_url: null,
-        github_id: null,
-        created_at: new Date().toISOString(),
-      };
-      localStorage.setItem('gitmind_user_id', simulatedUser.id);
-      localStorage.setItem('gitmind_user', JSON.stringify(simulatedUser));
-      setUser(simulatedUser);
-    }
+    const redirectUri = `${window.location.origin}/auth/callback`;
+    const { url } = await api.getAuthUrl(redirectUri);
+    window.location.href = url;
+  };
+
+  const loginDemo = () => {
+    const simulatedUser: User = {
+      id: crypto.randomUUID(),
+      name: 'Developer (Demo)',
+      avatar_url: null,
+      github_id: null,
+      created_at: new Date().toISOString(),
+    };
+    localStorage.setItem('gitmind_user_id', simulatedUser.id);
+    localStorage.setItem('gitmind_user', JSON.stringify(simulatedUser));
+    setUser(simulatedUser);
   };
 
   const handleCallback = async (code: string) => {
-    const { user } = await api.authCallback(code);
-    localStorage.setItem('gitmind_user_id', user.id);
-    setUser(user);
+    try {
+      const { user } = await api.authCallback(code);
+      localStorage.setItem('gitmind_user_id', user.id);
+      setUser(user);
+    } catch (e: any) {
+      console.error('OAuth callback failed:', e);
+      throw e;
+    }
   };
 
   const logout = () => {
@@ -71,7 +74,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, login, logout, handleCallback }}>
+    <AuthContext.Provider value={{ user, isLoading, login, loginDemo, logout, handleCallback }}>
       {children}
     </AuthContext.Provider>
   );
