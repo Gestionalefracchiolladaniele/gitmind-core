@@ -158,7 +158,26 @@ const AiPanel = ({ sessionState, onStateChange, session, repo, userId, openFiles
     try {
       const updates: Record<string, string> = {};
       
-      for (const patch of pendingPatches.patches) {
+      // Client-side: filter out protected files
+      const blockedFiles = pendingPatches.patches.filter(p => isClientProtectedFile(p.file));
+      const safePatches = pendingPatches.patches.filter(p => !isClientProtectedFile(p.file));
+      
+      if (blockedFiles.length > 0) {
+        toast({
+          title: 'File protetti bloccati',
+          description: `${blockedFiles.map(f => f.file).join(', ')} non possono essere modificati.`,
+          variant: 'destructive',
+        });
+      }
+      
+      if (safePatches.length === 0) {
+        toast({ title: 'Nessuna modifica applicabile', variant: 'destructive' });
+        setApplyingPatches(false);
+        setPendingPatches(null);
+        return;
+      }
+      
+      for (const patch of safePatches) {
         // Get current SHA for the file
         try {
           const fileData = await api.fetchFile(userId, repo.owner, repo.name, patch.file);

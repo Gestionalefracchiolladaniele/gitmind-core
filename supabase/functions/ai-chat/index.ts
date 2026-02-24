@@ -16,7 +16,6 @@ const PROTECTED_FILES = new Set([
   "vite.config.ts", "vite.config.js", "tailwind.config.ts", "tailwind.config.js",
   "postcss.config.js", "postcss.config.cjs", "eslint.config.js",
   "components.json", "index.html", ".gitignore",
-  "supabase/config.toml",
 ]);
 const PROTECTED_PATTERNS = [/\.env\./, /\.lock$/, /\.lockb$/, /supabase\/migrations\//, /\.lovable\//];
 
