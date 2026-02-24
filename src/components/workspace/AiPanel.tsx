@@ -429,23 +429,46 @@ const AiPanel = ({ sessionState, onStateChange, session, repo, userId, openFiles
               ))
             )}
 
-            {/* Pending patches banner */}
+            {/* Pending patches banner with preview */}
             {pendingPatches && (
               <div className="animate-slide-in-right rounded-lg border border-primary/30 bg-primary/5 p-3 space-y-2">
                 <div className="flex items-center gap-1.5">
                   <GitCommit className="h-3.5 w-3.5 text-primary" />
-                  <p className="text-xs font-medium text-primary">Modifiche pronte ({pendingPatches.patches.length} file)</p>
+                  <p className="text-xs font-medium text-primary">Anteprima modifiche ({pendingPatches.patches.length} file)</p>
                 </div>
-                <div className="space-y-1">
-                  {pendingPatches.patches.map(p => (
-                    <p key={p.file} className="text-[10px] font-mono text-muted-foreground">{p.file}</p>
-                  ))}
+                
+                {/* File list with blocked indicator */}
+                <div className="space-y-1.5">
+                  {pendingPatches.patches.map(p => {
+                    const blocked = isClientProtectedFile(p.file);
+                    return (
+                      <div key={p.file} className={`rounded px-2 py-1 ${blocked ? 'bg-destructive/10 border border-destructive/20' : 'bg-secondary/50'}`}>
+                        <div className="flex items-center gap-1.5">
+                          <FileCode className="h-3 w-3 shrink-0 text-muted-foreground" />
+                          <p className={`text-[10px] font-mono truncate ${blocked ? 'text-destructive line-through' : 'text-foreground/80'}`}>{p.file}</p>
+                          {blocked && <span className="text-[9px] text-destructive font-medium shrink-0">PROTETTO</span>}
+                        </div>
+                        {!blocked && (
+                          <p className="text-[9px] text-muted-foreground mt-0.5">
+                            {p.content.split('\n').length} righe · {(new TextEncoder().encode(p.content).length / 1024).toFixed(1)} KB
+                          </p>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
-                <p className="text-[10px] text-muted-foreground">{pendingPatches.commitMessage}</p>
-                <Button size="sm" className="h-7 text-xs w-full" onClick={handleApplyPatches} disabled={applyingPatches}>
-                  {applyingPatches ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <CheckCircle className="h-3 w-3 mr-1" />}
-                  Applica Modifiche
-                </Button>
+                
+                <p className="text-[10px] text-muted-foreground font-mono">{pendingPatches.commitMessage}</p>
+                
+                <div className="flex gap-2">
+                  <Button size="sm" className="h-7 text-xs flex-1" onClick={handleApplyPatches} disabled={applyingPatches}>
+                    {applyingPatches ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <CheckCircle className="h-3 w-3 mr-1" />}
+                    Applica
+                  </Button>
+                  <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => setPendingPatches(null)} disabled={applyingPatches}>
+                    Annulla
+                  </Button>
+                </div>
               </div>
             )}
 
