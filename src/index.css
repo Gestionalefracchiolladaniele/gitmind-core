@@ -15,8 +15,9 @@
     --popover: 240 33% 8%;
     --popover-foreground: 215 25% 90%;
 
-    --primary: 263 84% 58%;
-    --primary-foreground: 0 0% 100%;
+    /* Updated from purple to neon green */
+    --primary: 109 100% 54%;
+    --primary-foreground: 240 47% 4%;
 
     --secondary: 240 33% 12%;
     --secondary-foreground: 215 25% 90%;
@@ -24,31 +25,36 @@
     --muted: 240 20% 14%;
     --muted-foreground: 215 15% 63%;
 
-    --accent: 263 84% 58%;
-    --accent-foreground: 0 0% 100%;
+    /* Updated from purple to neon green */
+    --accent: 109 100% 54%;
+    --accent-foreground: 240 47% 4%;
 
     --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 100%;
 
     --border: 240 33% 14%;
     --input: 240 33% 14%;
-    --ring: 263 84% 58%;
+    /* Updated from purple to neon green */
+    --ring: 109 100% 54%;
 
     --radius: 0.5rem;
 
     --sidebar-background: 240 33% 6%;
     --sidebar-foreground: 215 25% 90%;
-    --sidebar-primary: 263 84% 58%;
-    --sidebar-primary-foreground: 0 0% 100%;
+    /* Updated from purple to neon green */
+    --sidebar-primary: 109 100% 54%;
+    --sidebar-primary-foreground: 240 47% 4%;
     --sidebar-accent: 240 33% 12%;
     --sidebar-accent-foreground: 215 25% 90%;
     --sidebar-border: 240 33% 14%;
-    --sidebar-ring: 263 84% 58%;
+    /* Updated from purple to neon green */
+    --sidebar-ring: 109 100% 54%;
 
     /* Custom GitMind tokens */
     --panel: 240 33% 8%;
     --panel-hover: 240 33% 10%;
-    --glow-primary: 263 84% 58%;
+    /* Updated from purple to neon green */
+    --glow-primary: 109 100% 54%;
     --text-secondary: 215 15% 63%;
     --surface-elevated: 240 33% 10%;
   }
