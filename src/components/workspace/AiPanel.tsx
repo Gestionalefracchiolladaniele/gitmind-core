@@ -24,6 +24,24 @@ interface PendingPatch {
   content: string;
 }
 
+// Client-side protected files — must never be committed via AI
+const CLIENT_PROTECTED_FILES = new Set([
+  '.env', 'package.json', 'package-lock.json', 'yarn.lock', 'bun.lockb',
+  'tsconfig.json', 'tsconfig.app.json', 'tsconfig.node.json',
+  'vite.config.ts', 'vite.config.js',
+  'tailwind.config.ts', 'tailwind.config.js',
+  'postcss.config.js', 'postcss.config.cjs',
+  'eslint.config.js', 'components.json', 'index.html',
+  '.gitignore', 'supabase/config.toml',
+]);
+const CLIENT_PROTECTED_PATTERNS = [/\.env\./, /\.lock$/, /\.lockb$/, /supabase\/migrations\//, /\.lovable\//];
+
+function isClientProtectedFile(path: string): boolean {
+  const name = path.split('/').pop() || '';
+  if (CLIENT_PROTECTED_FILES.has(name) || CLIENT_PROTECTED_FILES.has(path)) return true;
+  return CLIENT_PROTECTED_PATTERNS.some(p => p.test(path));
+}
+
 interface AiPanelProps {
   sessionState: SessionState;
   onStateChange: (state: SessionState) => void;
