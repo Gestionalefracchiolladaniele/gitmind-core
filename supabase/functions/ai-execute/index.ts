@@ -15,7 +15,7 @@ const BLOCKED_FILES = [
   "postcss.config.js", "postcss.config.cjs",
   "eslint.config.js", ".eslintrc.js", ".eslintrc.json",
   "components.json", "index.html",
-  ".gitignore", "README.md",
+  ".gitignore",
 ];
 const BLOCKED_PATTERNS = [
   /\.env\./, /config\.toml$/, /\.lock$/, /\.lockb$/,
