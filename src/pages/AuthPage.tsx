@@ -47,7 +47,7 @@ const AuthPage = () => {
             <GitBranch className="h-8 w-8 text-primary" />
           </div>
           <h1 className="mb-2 text-3xl font-bold tracking-tight text-foreground font-mono">
-            GitMind AI
+            Danspace AI
           </h1>
           <p className="text-muted-foreground">
             AI-native code editing platform

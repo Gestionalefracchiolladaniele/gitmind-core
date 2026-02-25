@@ -1,4 +1,4 @@
-// Core domain types for GitMind AI
+// Core domain types for Danspace AI
 
 export type SessionState = 'IDLE' | 'PLANNING' | 'SPEC_LOCKED' | 'EXECUTING' | 'VALIDATING' | 'DONE' | 'FAILED';
 export type SessionMode = 'chat' | 'action' | 'autonomous';
