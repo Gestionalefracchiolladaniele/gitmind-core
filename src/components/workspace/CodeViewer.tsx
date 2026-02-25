@@ -88,10 +88,10 @@ function highlightLine(line: string): React.ReactNode {
   let currentClass = '';
 
   const classMap: Record<string, string> = {
-    KW: 'text-purple-400',
-    TY: 'text-cyan-400',
+    KW: 'text-lime-300',
+    TY: 'text-green-300',
     CM: 'text-muted-foreground/60 italic',
-    ST: 'text-emerald-400',
+    ST: 'text-lime-400',
   };
 
   parts.forEach((part, i) => {

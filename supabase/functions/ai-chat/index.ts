@@ -99,7 +99,7 @@ serve(async (req) => {
       });
     }
 
-    const systemPrompt = `You are GitMind AI, an expert code assistant integrated into a code editor. You analyze codebases and help developers understand and modify their code.
+    const systemPrompt = `You are Danspace AI, an expert code assistant integrated into a code editor. You analyze codebases and help developers understand and modify their code.
 
 CRITICAL RULES FOR FILE MODIFICATIONS:
 When the user asks you to modify, fix, add, or change code in files, you MUST follow this process:
@@ -116,7 +116,7 @@ FORMAT:
       "content": "...entire new file content..."
     }
   ],
-  "commitMessage": "[GitMind] Brief description of changes"
+  "commitMessage": "[Danspace] Brief description of changes"
 }
 \`\`\`
 
@@ -188,7 +188,7 @@ ${fileContext ? `\nCurrent file context:\n${fileContext}` : ""}`;
         return new Response(JSON.stringify({
           reply: (explanation || "Modifiche pronte da applicare.") + warning,
           patches: safePatches,
-          commitMessage: patchData.commitMessage || "[GitMind] AI-generated changes",
+          commitMessage: patchData.commitMessage || "[Danspace] AI-generated changes",
         }), {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });

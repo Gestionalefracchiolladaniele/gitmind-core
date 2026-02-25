@@ -95,7 +95,7 @@ const Dashboard = () => {
         <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-6">
           <div className="flex items-center gap-3">
             <GitBranch className="h-5 w-5 text-primary" />
-            <span className="font-mono font-semibold text-foreground">GitMind AI</span>
+            <span className="font-mono font-semibold text-foreground">Danspace AI</span>
           </div>
           <div className="flex items-center gap-2">
             {user && (

@@ -42,7 +42,7 @@ async function githubApi(token: string, path: string, method = "GET", body?: unk
     headers: {
       Authorization: `Bearer ${token}`,
       Accept: "application/vnd.github.v3+json",
-      "User-Agent": "GitMind-AI",
+      "User-Agent": "Danspace-AI",
       ...(body ? { "Content-Type": "application/json" } : {}),
     },
     body: body ? JSON.stringify(body) : undefined,
@@ -238,7 +238,7 @@ serve(async (req) => {
         }
 
         const commitResult = await githubApi(token, `/repos/${owner}/${name}/contents/${filePath}`, "PUT", {
-          message: message || "[GitMind] AI-generated change",
+          message: message || "[Danspace] AI-generated change",
           content: btoa(content),
           sha,
           branch: branch || "main",

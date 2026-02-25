@@ -171,10 +171,10 @@ const Workspace = () => {
 const StateIndicatorCompact = ({ state }: { state: SessionState }) => {
   const colors: Record<SessionState, string> = {
     IDLE: 'bg-muted-foreground',
-    PLANNING: 'bg-yellow-500',
-    SPEC_LOCKED: 'bg-orange-500',
-    EXECUTING: 'bg-blue-500 animate-pulse-glow',
-    VALIDATING: 'bg-cyan-500 animate-pulse-glow',
+    PLANNING: 'bg-lime-300',
+    SPEC_LOCKED: 'bg-green-300',
+    EXECUTING: 'bg-lime-400 animate-pulse-glow',
+    VALIDATING: 'bg-green-400 animate-pulse-glow',
     DONE: 'bg-emerald-500',
     FAILED: 'bg-destructive',
   };
