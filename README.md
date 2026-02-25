@@ -44,3 +44,34 @@ You don't have to use `eject`. The curated feature set is suitable for small and
 You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
 
 To learn React, check out the [React documentation](https://reactjs.org/).
+
+
+## GitHub OAuth callback setup (important)
+
+If GitHub shows `The redirect_uri is not associated with this application`, configure the callback URL in your GitHub OAuth App.
+
+1. Open GitHub **Developer settings → OAuth Apps → <your app>**.
+2. Add the exact callback URL used by this app in **Authorization callback URL**.
+3. Configure Supabase Edge Function secret:
+
+```bash
+GITHUB_REDIRECT_URI=https://your-domain.com/auth/callback
+```
+
+4. In frontend env, set:
+
+```bash
+VITE_GITHUB_REDIRECT_URI=https://your-domain.com/auth/callback
+```
+
+If `VITE_GITHUB_REDIRECT_URI` is not set, the app uses:
+
+```text
+${window.location.origin}/auth/callback
+```
+
+So for local development you typically need:
+
+```text
+http://localhost:5173/auth/callback
+```

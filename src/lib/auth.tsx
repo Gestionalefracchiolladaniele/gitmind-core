@@ -2,13 +2,22 @@ import { useState, useEffect, createContext, useContext, type ReactNode } from '
 import type { User } from './types';
 import { api } from './api';
 
+export function resolveGitHubRedirectUri(): string {
+  const configured = import.meta.env.VITE_GITHUB_REDIRECT_URI as string | undefined;
+  if (configured && configured.trim().length > 0) {
+    return configured.trim();
+  }
+
+  return `${window.location.origin}/auth/callback`;
+}
+
 interface AuthContextType {
   user: User | null;
   isLoading: boolean;
   login: () => Promise<void>;
   loginDemo: () => void;
   logout: () => void;
-  handleCallback: (code: string) => Promise<void>;
+  handleCallback: (code: string, redirectUri?: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -38,7 +47,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const login = async () => {
-    const redirectUri = `${window.location.origin}/auth/callback`;
+    const redirectUri = resolveGitHubRedirectUri();
     const { url } = await api.getAuthUrl(redirectUri);
     window.location.href = url;
   };
@@ -56,9 +65,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(simulatedUser);
   };
 
-  const handleCallback = async (code: string) => {
+  const handleCallback = async (code: string, redirectUri?: string) => {
     try {
-      const { user } = await api.authCallback(code);
+      const { user } = await api.authCallback(code, redirectUri || resolveGitHubRedirectUri());
       localStorage.setItem('danspace_user_id', user.id);
       setUser(user);
     } catch (e: any) {

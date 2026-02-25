@@ -15,6 +15,7 @@ serve(async (req) => {
     const { action, code, redirectUri, userId: verifyUserId } = await req.json();
     const clientId = Deno.env.get("GITHUB_CLIENT_ID");
     const clientSecret = Deno.env.get("GITHUB_CLIENT_SECRET");
+    const configuredRedirectUri = Deno.env.get("GITHUB_REDIRECT_URI")?.trim();
 
     if (action === "get_auth_url") {
       if (!clientId) {
@@ -24,8 +25,18 @@ serve(async (req) => {
       }
       const scopes = "repo,read:user";
       const state = crypto.randomUUID();
-      const url = `https://github.com/login/oauth/authorize?client_id=${clientId}&scope=${scopes}&state=${state}&redirect_uri=${encodeURIComponent(redirectUri || "")}`;
-      return new Response(JSON.stringify({ url, state }), {
+      const effectiveRedirectUri = configuredRedirectUri || (redirectUri ? String(redirectUri).trim() : "");
+
+      if (!effectiveRedirectUri) {
+        return new Response(JSON.stringify({
+          error: "Missing redirect URI. Set GITHUB_REDIRECT_URI secret or pass redirectUri from client.",
+        }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const url = `https://github.com/login/oauth/authorize?client_id=${clientId}&scope=${scopes}&state=${state}&redirect_uri=${encodeURIComponent(effectiveRedirectUri)}`;
+      return new Response(JSON.stringify({ url, state, redirectUri: effectiveRedirectUri }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
@@ -38,10 +49,16 @@ serve(async (req) => {
       }
 
       // Exchange code for token
+      const effectiveRedirectUri = configuredRedirectUri || (redirectUri ? String(redirectUri).trim() : "");
       const tokenRes = await fetch("https://github.com/login/oauth/access_token", {
         method: "POST",
         headers: { "Content-Type": "application/json", Accept: "application/json" },
-        body: JSON.stringify({ client_id: clientId, client_secret: clientSecret, code }),
+        body: JSON.stringify({
+          client_id: clientId,
+          client_secret: clientSecret,
+          code,
+          ...(effectiveRedirectUri ? { redirect_uri: effectiveRedirectUri } : {}),
+        }),
       });
       const tokenData = await tokenRes.json();
       if (tokenData.error) {

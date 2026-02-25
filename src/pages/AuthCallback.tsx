@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Loader2 } from 'lucide-react';
-import { useAuth } from '@/lib/auth';
+import { resolveGitHubRedirectUri, useAuth } from '@/lib/auth';
 
 const AuthCallback = () => {
   const navigate = useNavigate();
@@ -11,7 +11,7 @@ const AuthCallback = () => {
   useEffect(() => {
     const code = searchParams.get('code');
     if (code) {
-      handleCallback(code)
+      handleCallback(code, resolveGitHubRedirectUri())
         .then(() => navigate('/dashboard'))
         .catch((err) => {
           console.error('Auth callback failed:', err);
