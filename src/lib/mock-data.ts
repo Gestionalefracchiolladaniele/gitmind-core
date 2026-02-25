@@ -1,9 +1,9 @@
 import type { FileNode, Repository, ChatMessage } from './types';
 
 export const MOCK_REPOSITORIES: Omit<Repository, 'id' | 'user_id' | 'created_at'>[] = [
-  { owner: 'gitmind', name: 'core-engine', default_branch: 'main', base_path: '/src', github_repo_id: null },
-  { owner: 'gitmind', name: 'web-client', default_branch: 'main', base_path: '/app', github_repo_id: null },
-  { owner: 'gitmind', name: 'ai-orchestrator', default_branch: 'develop', base_path: '/lib', github_repo_id: null },
+  { owner: 'danspace', name: 'core-engine', default_branch: 'main', base_path: '/src', github_repo_id: null },
+  { owner: 'danspace', name: 'web-client', default_branch: 'main', base_path: '/app', github_repo_id: null },
+  { owner: 'danspace', name: 'ai-orchestrator', default_branch: 'develop', base_path: '/lib', github_repo_id: null },
 ];
 
 export const MOCK_FILE_TREE: FileNode[] = [
@@ -84,7 +84,7 @@ export const MOCK_CHAT_MESSAGES: ChatMessage[] = [
   {
     id: '1',
     role: 'assistant',
-    content: 'Welcome to GitMind AI. I can help you analyze and modify code in this repository. What would you like to do?',
+    content: 'Welcome to Danspace AI. I can help you analyze and modify code in this repository. What would you like to do?',
     timestamp: new Date(),
   },
 ];

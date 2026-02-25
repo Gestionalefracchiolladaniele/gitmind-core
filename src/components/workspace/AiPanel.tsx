@@ -76,7 +76,7 @@ const AiPanel = ({ sessionState, onStateChange, session, repo, userId, openFiles
     api.getChatMessages(session.id)
       .then(({ messages: msgs }) => {
         if (msgs.length === 0) {
-          const welcomeContent = 'Benvenuto in GitMind AI. Ho accesso ai file aperti nel tuo repository. Chiedimi di analizzare il codice o descrivimi una modifica da eseguire.';
+          const welcomeContent = 'Benvenuto in Danspace AI. Ho accesso ai file aperti nel tuo repository. Chiedimi di analizzare il codice o descrivimi una modifica da eseguire.';
           api.saveChatMessage(session.id, 'assistant', welcomeContent).then(({ message }) => {
             setMessages([message]);
           });
@@ -136,7 +136,7 @@ const AiPanel = ({ sessionState, onStateChange, session, repo, userId, openFiles
         setPendingPatches({
           msgIdx: messages.length + 2, // after user + assistant
           patches: response.patches,
-          commitMessage: response.commitMessage || '[GitMind] AI changes',
+          commitMessage: response.commitMessage || '[Danspace] AI changes',
         });
       }
     } catch (e: any) {
@@ -252,7 +252,7 @@ const AiPanel = ({ sessionState, onStateChange, session, repo, userId, openFiles
             name: repo.name,
             path: filePath,
             content: content as string,
-            message: `[GitMind] Revert file to previous state`,
+            message: `[Danspace] Revert file to previous state`,
             sha: fileData.sha,
             sessionId: session.id,
           });
@@ -598,10 +598,10 @@ const AiPanel = ({ sessionState, onStateChange, session, repo, userId, openFiles
 const StateIndicator = ({ state }: { state: SessionState }) => {
   const colors: Record<SessionState, string> = {
     IDLE: 'bg-muted-foreground',
-    PLANNING: 'bg-yellow-500',
-    SPEC_LOCKED: 'bg-orange-500',
-    EXECUTING: 'bg-blue-500 animate-pulse-glow',
-    VALIDATING: 'bg-cyan-500 animate-pulse-glow',
+    PLANNING: 'bg-lime-300',
+    SPEC_LOCKED: 'bg-green-300',
+    EXECUTING: 'bg-lime-400 animate-pulse-glow',
+    VALIDATING: 'bg-green-400 animate-pulse-glow',
     DONE: 'bg-emerald-500',
     FAILED: 'bg-destructive',
   };

@@ -158,8 +158,8 @@ const TreeNode: React.FC<{
   const isFolder = node.type === 'folder';
 
   const langColor: Record<string, string> = {
-    tsx: 'text-blue-400', ts: 'text-blue-300', json: 'text-yellow-400', md: 'text-muted-foreground',
-    js: 'text-yellow-300', jsx: 'text-blue-400', css: 'text-pink-400', py: 'text-green-400',
+    tsx: 'text-lime-300', ts: 'text-lime-400', json: 'text-green-300', md: 'text-muted-foreground',
+    js: 'text-lime-200', jsx: 'text-lime-300', css: 'text-emerald-300', py: 'text-green-400',
   };
 
   return (
