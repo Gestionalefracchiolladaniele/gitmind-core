@@ -18,9 +18,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const storedUserId = localStorage.getItem('gitmind_user_id');
+    const storedUserId = localStorage.getItem('danspace_user_id');
     if (storedUserId) {
-      const storedUser = localStorage.getItem('gitmind_user');
+      const storedUser = localStorage.getItem('danspace_user');
       if (storedUser) {
         try {
           setUser(JSON.parse(storedUser));
@@ -30,7 +30,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       api.verifyUser(storedUserId)
         .then(({ user }) => setUser(user))
-        .catch(() => localStorage.removeItem('gitmind_user_id'))
+        .catch(() => localStorage.removeItem('danspace_user_id'))
         .finally(() => setIsLoading(false));
     } else {
       setIsLoading(false);
@@ -51,15 +51,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       github_id: null,
       created_at: new Date().toISOString(),
     };
-    localStorage.setItem('gitmind_user_id', simulatedUser.id);
-    localStorage.setItem('gitmind_user', JSON.stringify(simulatedUser));
+    localStorage.setItem('danspace_user_id', simulatedUser.id);
+    localStorage.setItem('danspace_user', JSON.stringify(simulatedUser));
     setUser(simulatedUser);
   };
 
   const handleCallback = async (code: string) => {
     try {
       const { user } = await api.authCallback(code);
-      localStorage.setItem('gitmind_user_id', user.id);
+      localStorage.setItem('danspace_user_id', user.id);
       setUser(user);
     } catch (e: any) {
       console.error('OAuth callback failed:', e);
@@ -68,8 +68,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const logout = () => {
-    localStorage.removeItem('gitmind_user_id');
-    localStorage.removeItem('gitmind_user');
+    localStorage.removeItem('danspace_user_id');
+    localStorage.removeItem('danspace_user');
     setUser(null);
   };
 

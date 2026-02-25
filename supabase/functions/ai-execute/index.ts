@@ -155,7 +155,7 @@ serve(async (req) => {
 
 1. ONLY modify the files provided below. Never reference or create other files.
 2. Return your changes as UNIFIED DIFF format only.
-3. Include a commit message on the first line prefixed with "[GitMind]"
+3. Include a commit message on the first line prefixed with "[Danspace]"
 4. Do NOT include any explanation, commentary, or markdown formatting.
 5. Each file diff must start with "--- a/<filepath>" and "+++ b/<filepath>"
 6. Use proper @@ hunk headers.
@@ -206,8 +206,8 @@ Respond with ONLY the commit message line followed by unified diff patches.`;
 
         // Parse output: first line = commit message, rest = patches
         const lines = rawOutput.split("\n");
-        commitMessage = lines[0]?.replace(/^\[GitMind\]\s*/, "[GitMind] ") || "[GitMind] AI-generated changes";
-        if (!commitMessage.startsWith("[GitMind]")) commitMessage = `[GitMind] ${commitMessage}`;
+        commitMessage = lines[0]?.replace(/^\[Danspace\]\s*/, "[Danspace] ") || "[Danspace] AI-generated changes";
+        if (!commitMessage.startsWith("[Danspace]")) commitMessage = `[Danspace] ${commitMessage}`;
         patches = lines.slice(1).join("\n").trim();
 
         // Validate

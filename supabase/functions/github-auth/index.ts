@@ -54,7 +54,7 @@ serve(async (req) => {
 
       // Fetch GitHub user profile
       const userRes = await fetch("https://api.github.com/user", {
-        headers: { Authorization: `Bearer ${accessToken}`, "User-Agent": "GitMind-AI" },
+        headers: { Authorization: `Bearer ${accessToken}`, "User-Agent": "Danspace-AI" },
       });
       const ghUser = await userRes.json();
 
