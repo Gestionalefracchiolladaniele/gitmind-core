@@ -2,13 +2,22 @@ import { useState, useEffect, createContext, useContext, type ReactNode } from '
 import type { User } from './types';
 import { api } from './api';
 
+export function resolveGitHubRedirectUri(): string {
+  const configured = import.meta.env.VITE_GITHUB_REDIRECT_URI as string | undefined;
+  if (configured && configured.trim().length > 0) {
+    return configured.trim();
+  }
+
+  return `${window.location.origin}/auth/callback`;
+}
+
 interface AuthContextType {
   user: User | null;
   isLoading: boolean;
   login: () => Promise<void>;
   loginDemo: () => void;
   logout: () => void;
-  handleCallback: (code: string) => Promise<void>;
+  handleCallback: (code: string, redirectUri?: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -18,9 +27,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const storedUserId = localStorage.getItem('gitmind_user_id');
+    const storedUserId = localStorage.getItem('danspace_user_id');
     if (storedUserId) {
-      const storedUser = localStorage.getItem('gitmind_user');
+      const storedUser = localStorage.getItem('danspace_user');
       if (storedUser) {
         try {
           setUser(JSON.parse(storedUser));
@@ -30,7 +39,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       api.verifyUser(storedUserId)
         .then(({ user }) => setUser(user))
-        .catch(() => localStorage.removeItem('gitmind_user_id'))
+        .catch(() => localStorage.removeItem('danspace_user_id'))
         .finally(() => setIsLoading(false));
     } else {
       setIsLoading(false);
@@ -38,7 +47,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const login = async () => {
-    const redirectUri = `${window.location.origin}/auth/callback`;
+    const redirectUri = resolveGitHubRedirectUri();
     const { url } = await api.getAuthUrl(redirectUri);
     window.location.href = url;
   };
@@ -51,15 +60,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       github_id: null,
       created_at: new Date().toISOString(),
     };
-    localStorage.setItem('gitmind_user_id', simulatedUser.id);
-    localStorage.setItem('gitmind_user', JSON.stringify(simulatedUser));
+    localStorage.setItem('danspace_user_id', simulatedUser.id);
+    localStorage.setItem('danspace_user', JSON.stringify(simulatedUser));
     setUser(simulatedUser);
   };
 
-  const handleCallback = async (code: string) => {
+  const handleCallback = async (code: string, redirectUri?: string) => {
     try {
-      const { user } = await api.authCallback(code);
-      localStorage.setItem('gitmind_user_id', user.id);
+      const { user } = await api.authCallback(code, redirectUri || resolveGitHubRedirectUri());
+      localStorage.setItem('danspace_user_id', user.id);
       setUser(user);
     } catch (e: any) {
       console.error('OAuth callback failed:', e);
@@ -68,8 +77,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const logout = () => {
-    localStorage.removeItem('gitmind_user_id');
-    localStorage.removeItem('gitmind_user');
+    localStorage.removeItem('danspace_user_id');
+    localStorage.removeItem('danspace_user');
     setUser(null);
   };
 

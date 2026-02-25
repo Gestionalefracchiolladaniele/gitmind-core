@@ -25,8 +25,8 @@ export const api = {
   getAuthUrl: (redirectUri: string) =>
     callEdge<{ url: string; state: string }>('github-auth', { action: 'get_auth_url', redirectUri }),
 
-  authCallback: (code: string) =>
-    callEdge<{ user: User }>('github-auth', { action: 'callback', code }),
+  authCallback: (code: string, redirectUri?: string) =>
+    callEdge<{ user: User }>('github-auth', { action: 'callback', code, redirectUri }),
 
   verifyUser: (userId: string) =>
     callEdge<{ user: User }>('github-auth', { action: 'verify', userId }),

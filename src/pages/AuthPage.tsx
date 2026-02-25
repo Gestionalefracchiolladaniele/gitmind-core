@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { GitBranch, Zap, Shield, Github, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useAuth } from '@/lib/auth';
+import { resolveGitHubRedirectUri, useAuth } from '@/lib/auth';
 import { useToast } from '@/hooks/use-toast';
 
 const AuthPage = () => {
@@ -22,7 +22,7 @@ const AuthPage = () => {
     } catch (e: any) {
       toast({
         title: 'GitHub OAuth non disponibile',
-        description: 'Verifica che le callback URL siano configurate nell\'OAuth App su GitHub. Puoi usare la modalità Demo nel frattempo.',
+        description: `Aggiungi questa Callback URL nella GitHub OAuth App: ${resolveGitHubRedirectUri()}. Poi riprova il login.`,
         variant: 'destructive',
       });
       setIsLoading(false);
@@ -47,7 +47,7 @@ const AuthPage = () => {
             <GitBranch className="h-8 w-8 text-primary" />
           </div>
           <h1 className="mb-2 text-3xl font-bold tracking-tight text-foreground font-mono">
-            GitMind AI
+            Danspace AI
           </h1>
           <p className="text-muted-foreground">
             AI-native code editing platform
