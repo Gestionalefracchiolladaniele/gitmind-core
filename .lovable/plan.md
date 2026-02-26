@@ -1,80 +1,73 @@
 
+Obiettivo: eliminare gli errori (redirect_uri + preview non buildata), aggiungere API key Gemini/OpenAI in Impostazioni, e rendere le modifiche AI stabili senza uscire dallo stack Lovable.
 
-## Analisi dei Problemi
+1) Blocco immediato (subito)
+- Configurare nella GitHub OAuth App entrambe le callback:
+  - `https://id-preview--bd003e4d-a27f-4384-bf7f-00ad2d21f1b0.lovable.app/auth/callback`
+  - `https://gitmind-core-flow.lovable.app/auth/callback`
+- Lasciare attivo il login Demo come fallback sempre disponibile.
+- Se la preview resta in “not built yet”, ripristinare l’ultima versione stabile e poi applicare i fix sotto in ordine.
 
-Ho identificato **2 problemi distinti** dalle tue screenshot:
+2) Stabilità build (evitare schermata “Preview has not been built yet”)
+- Consolidare strategia dipendenze/lockfile (un solo flusso installazione coerente con build).
+- Mantenere `tailwindcss-animate` installato e rendere il plugin Tailwind robusto a missing module (fallback controllato, senza crash build).
+- Aggiungere check pre-commit lato AI per bloccare patch che toccano file di build/config critici.
 
-### Problema 1: Errore nel salvataggio delle impostazioni AI
-La pagina Impostazioni mostra l'errore `"new row for relation 'user_settings' violates check constraint 'valid_ai_provider'"`.
+3) Impostazioni: API key Gemini/OpenAI (oltre selezione modello)
+- Estendere pagina Settings con:
+  - toggle “Usa chiave personale”
+  - provider key: `OpenAI` / `Gemini`
+  - input password-masked della chiave
+  - stato chiave salvata (es. “••••1234” + pulsante sostituisci/rimuovi)
+- Salvare chiavi nel backend in modo non esposto al client (mai ritornare la chiave completa in GET impostazioni).
+- Mantenere compatibilità con impostazioni attuali (`ai_provider` già presente) e aggiungere campi necessari per modalità custom.
 
-**Causa**: Il database ha un vincolo CHECK che accetta solo `'lovable', 'openai', 'gemini', 'anthropic'`, ma il codice invia i nomi completi dei modelli come `openai/gpt-5.2` o `google/gemini-3-flash-preview`.
+4) Routing AI backend (modello + provider)
+- Aggiornare backend chat:
+  - se “chiave personale” attiva: usare adapter provider scelto (OpenAI/Gemini)
+  - altrimenti usare provider integrato corrente (default stabile)
+- Validare coerenza provider/modello (es. modello OpenAI solo con provider OpenAI).
+- Uniformare gestione errori rate/credito e messaggi lato UI (toast espliciti).
 
-### Problema 2: L'AI chat ha rotto l'app dopo un commit
-L'AI ha modificato `src/index.css` per cambiare il colore e dopo il commit l'app non si carica più. Il sistema di protezione file attuale blocca troppi file ma non protegge abbastanza a livello client.
+5) Guardrail forti per non rompere struttura
+- Aggiornare prompt in entrambi i backend AI (`ai-chat` e `ai-execute`) con regole hard:
+  - stack consentito: React + Vite + TypeScript + Tailwind + shadcn + lucide
+  - vietato introdurre Next/Vue/Angular/Svelte/backend runtime non previsto
+  - vietato refactor non richiesto
+  - vietato alterare struttura file non coinvolti
+- Aggiungere validazione server-side patch:
+  - blocco file protetti (già presente, da allineare e rendere unico)
+  - blocco import/framework non consentiti
+  - blocco patch troppo distruttive (soglia linee modificate / rewrite totale)
+  - blocco output incompleto o sintassi manifestamente invalida (TS/JSON/CSS basic parse checks)
 
----
+6) Sicurezza commit AI (prima di scrivere su GitHub)
+- In `AiPanel` mostrare anteprima diff reale (linee aggiunte/rimosse + warning rischio).
+- Applicazione patch solo dopo validazione backend “safe”.
+- Commit con messaggio standard e consistente, con rollback rapido da ultimo snapshot conversazione.
+- (Opzionale consigliato) passare a commit multi-file atomico per evitare stati parziali.
 
-## Piano di Implementazione
+7) Piano test finale (end-to-end)
+- Test 1: login GitHub da mobile preview + callback corretta.
+- Test 2: login Demo sempre funzionante.
+- Test 3: Settings salva modello senza errore.
+- Test 4: Settings salva/rimuove key OpenAI e Gemini, senza mai mostrare chiave completa.
+- Test 5: richiesta AI di modifica UI semplice -> patch applicabile -> build ok.
+- Test 6: richiesta AI che prova tecnologia non consentita -> patch bloccata con messaggio chiaro.
+- Test 7: verifica su GitHub che le modifiche siano mirate (non riscritture massive).
 
-### Step 1: Correggere il vincolo database
-- Eseguire una migrazione SQL per aggiornare il CHECK constraint `valid_ai_provider` affinché accetti tutti i nomi modello completi utilizzati nel codice (es. `google/gemini-3-flash-preview`, `openai/gpt-5.2`, etc.)
-
-### Step 2: Correggere il file index.css
-- Verificare e ripristinare il file `src/index.css` al contenuto corretto (il tema viola originale, che risulta già corretto nel codice attuale)
-
-### Step 3: Aggiungere validazione client-side prima del commit
-- Modificare `AiPanel.tsx` per aggiungere un controllo sui file protetti **prima** di eseguire il commit su GitHub, così da avere una doppia protezione (server + client)
-- Aggiungere un controllo di "anteprima diff" che mostra all'utente cosa cambierà prima di applicare
-
-### Step 4: Migliorare il sistema di protezione nell'edge function
-- Rimuovere file come `README.md` dalla lista bloccata (è un file legittimamente modificabile)
-- Mantenere bloccati solo i file di configurazione critica: `.env`, `package.json`, `tsconfig.*`, `vite.config.*`, `tailwind.config.*`, `index.html`
-- Aggiungere nel sistema prompt AI l'istruzione di **non generare CSS/codice che rompa la sintassi** e di includere sempre il contenuto completo del file
-
-### Dettagli Tecnici
-
-```text
-Flusso protezione aggiornato:
-
-  Utente chiede modifica
-         │
-    AI genera patches
-         │
-  ┌──────▼──────┐
-  │ Server-side  │ → Filtra file config critici
-  │ (ai-chat)    │ → Blocca pattern pericolosi
-  └──────┬──────┘
-         │
-  ┌──────▼──────┐
-  │ Client-side  │ → Verifica file protetti
-  │ (AiPanel)    │ → Mostra anteprima
-  └──────┬──────┘
-         │
-    Utente approva → Commit su GitHub
-```
-
-**Migrazione SQL:**
-```sql
-ALTER TABLE user_settings DROP CONSTRAINT valid_ai_provider;
-ALTER TABLE user_settings ADD CONSTRAINT valid_ai_provider 
-  CHECK (ai_provider = ANY (ARRAY[
-    'lovable',
-    'google/gemini-2.5-pro',
-    'google/gemini-2.5-flash', 
-    'google/gemini-2.5-flash-lite',
-    'google/gemini-3-flash-preview',
-    'google/gemini-3-pro-preview',
-    'google/gemini-3-pro-image-preview',
-    'openai/gpt-5',
-    'openai/gpt-5-mini',
-    'openai/gpt-5-nano',
-    'openai/gpt-5.2'
-  ]));
-```
-
-**File modificati:**
-- Migrazione SQL (nuovo vincolo)
-- `src/components/workspace/AiPanel.tsx` (validazione client-side)
-- `supabase/functions/ai-chat/index.ts` (lista protezione aggiornata)
-- `supabase/functions/ai-execute/index.ts` (lista protezione aggiornata)
-
+Dettagli tecnici (file da toccare)
+- Frontend:
+  - `src/pages/Settings.tsx`
+  - `src/lib/api.ts`
+  - `src/components/workspace/AiPanel.tsx`
+- Backend functions:
+  - `supabase/functions/ai-chat/index.ts`
+  - `supabase/functions/ai-execute/index.ts`
+  - `supabase/functions/gitmind-api/index.ts`
+  - `supabase/functions/github-auth/index.ts` (solo UX/error clarity callback)
+- Config/build:
+  - `tailwind.config.ts`
+  - `package.json` + lockfile coerente
+- Migrazione database:
+  - estensione `user_settings` per modalità key personalizzata (provider, flag attivo, metadati key) e hardening accesso dati sensibili.
