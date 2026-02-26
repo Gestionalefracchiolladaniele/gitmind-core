@@ -76,7 +76,7 @@ const AiPanel = ({ sessionState, onStateChange, session, repo, userId, openFiles
     api.getChatMessages(session.id)
       .then(({ messages: msgs }) => {
         if (msgs.length === 0) {
-          const welcomeContent = 'Benvenuto in Danspace AI. Ho accesso ai file aperti nel tuo repository. Chiedimi di analizzare il codice o descrivimi una modifica da eseguire.';
+          const welcomeContent = 'Salama';
           api.saveChatMessage(session.id, 'assistant', welcomeContent).then(({ message }) => {
             setMessages([message]);
           });
@@ -120,6 +120,11 @@ const AiPanel = ({ sessionState, onStateChange, session, repo, userId, openFiles
       const fileSnapshot = buildFileSnapshot();
       const { message: savedUserMsg } = await api.saveChatMessage(session.id, 'user', userContent, fileSnapshot);
       setMessages(prev => [...prev, savedUserMsg]);
+
+      toast({
+        title: 'Messaggio salvato',
+        description: 'Il tuo messaggio è stato salvato correttamente.',
+      });
 
       const allMsgs = [...messages, savedUserMsg];
       const chatMessages = allMsgs.map(m => ({ role: m.role, content: m.content }));
