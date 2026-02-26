@@ -242,8 +242,10 @@ export type Database = {
           api_token: string | null
           created_at: string
           custom_api_key: string | null
+          custom_provider: string | null
           id: string
           updated_at: string
+          use_custom_key: boolean
           user_id: string
         }
         Insert: {
@@ -251,8 +253,10 @@ export type Database = {
           api_token?: string | null
           created_at?: string
           custom_api_key?: string | null
+          custom_provider?: string | null
           id?: string
           updated_at?: string
+          use_custom_key?: boolean
           user_id: string
         }
         Update: {
@@ -260,8 +264,10 @@ export type Database = {
           api_token?: string | null
           created_at?: string
           custom_api_key?: string | null
+          custom_provider?: string | null
           id?: string
           updated_at?: string
+          use_custom_key?: boolean
           user_id?: string
         }
         Relationships: [

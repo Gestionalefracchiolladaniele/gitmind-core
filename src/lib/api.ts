@@ -96,9 +96,9 @@ export const api = {
 
   // ===== USER SETTINGS =====
   getUserSettings: (userId: string) =>
-    callEdge<{ ai_provider: string; custom_api_key: string | null; api_token: string | null }>('gitmind-api', { action: 'settings.get', userId }),
+    callEdge<{ ai_provider: string; custom_api_key: string | null; api_token: string | null; use_custom_key?: boolean; custom_provider?: string | null; has_custom_key?: boolean; key_mask?: string }>('gitmind-api', { action: 'settings.get', userId }),
 
-  saveUserSettings: (userId: string, settings: { ai_provider: string; custom_api_key: string | null }) =>
+  saveUserSettings: (userId: string, settings: { ai_provider: string; custom_api_key: string | null; use_custom_key?: boolean; custom_provider?: string | null }) =>
     callEdge<{ success: boolean }>('gitmind-api', { action: 'settings.save', userId, ...settings }),
 
   regenerateApiToken: (userId: string) =>
