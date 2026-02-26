@@ -8,6 +8,8 @@ const corsHeaders = {
 
 // AI provider endpoints
 const LOVABLE_ENDPOINT = "https://ai.gateway.lovable.dev/v1/chat/completions";
+const OPENAI_ENDPOINT = "https://api.openai.com/v1/chat/completions";
+const GEMINI_ENDPOINT = "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions";
 
 // Protected files — AI must never generate patches for these
 const PROTECTED_FILES = new Set([
@@ -25,6 +27,26 @@ function isProtectedFile(path: string): boolean {
   return PROTECTED_PATTERNS.some(p => p.test(path));
 }
 
+// Forbidden imports/frameworks that would break the app
+const FORBIDDEN_PATTERNS = [
+  /from\s+['"]next\//,
+  /from\s+['"]@next\//,
+  /from\s+['"]vue['"]/,
+  /from\s+['"]@vue\//,
+  /from\s+['"]svelte['"]/,
+  /from\s+['"]@angular\//,
+  /from\s+['"]nuxt['"]/,
+  /require\s*\(\s*['"]express['"]\)/,
+];
+
+function hasForbiddenImports(content: string): string[] {
+  const found: string[] = [];
+  for (const p of FORBIDDEN_PATTERNS) {
+    if (p.test(content)) found.push(p.source);
+  }
+  return found;
+}
+
 const LOVABLE_MODELS = [
   "google/gemini-2.5-pro",
   "google/gemini-2.5-flash",
@@ -37,6 +59,23 @@ const LOVABLE_MODELS = [
   "openai/gpt-5-nano",
   "openai/gpt-5.2",
 ];
+
+// Map Lovable model names to native provider model names for BYOK
+const MODEL_MAP_OPENAI: Record<string, string> = {
+  "openai/gpt-5": "gpt-4o",
+  "openai/gpt-5-mini": "gpt-4o-mini",
+  "openai/gpt-5-nano": "gpt-4o-mini",
+  "openai/gpt-5.2": "gpt-4o",
+};
+
+const MODEL_MAP_GEMINI: Record<string, string> = {
+  "google/gemini-2.5-pro": "gemini-2.5-pro",
+  "google/gemini-2.5-flash": "gemini-2.5-flash",
+  "google/gemini-2.5-flash-lite": "gemini-2.5-flash-lite",
+  "google/gemini-3-flash-preview": "gemini-2.5-flash",
+  "google/gemini-3-pro-preview": "gemini-2.5-pro",
+  "google/gemini-3-pro-image-preview": "gemini-2.5-pro",
+};
 
 async function getUserSettings(supabase: any, userId?: string) {
   if (!userId) return null;
@@ -51,11 +90,7 @@ async function callAI(apiKey: string, endpoint: string, model: string, messages:
       "Content-Type": "application/json",
       Authorization: `Bearer ${apiKey}`,
     },
-    body: JSON.stringify({
-      model,
-      messages,
-      stream: false,
-    }),
+    body: JSON.stringify({ model, messages, stream: false }),
   });
 
   if (!res.ok) {
@@ -69,6 +104,37 @@ async function callAI(apiKey: string, endpoint: string, model: string, messages:
   const data = await res.json();
   return data.choices?.[0]?.message?.content || "";
 }
+
+// Stack constraint rules injected into every system prompt
+const STACK_CONSTRAINTS = `
+TECHNOLOGY CONSTRAINTS — ABSOLUTELY MANDATORY:
+You are working on an app built with this EXACT technology stack:
+- React 18 + TypeScript
+- Vite (bundler)
+- Tailwind CSS + tailwindcss-animate
+- shadcn/ui components (from @/components/ui/*)
+- Lucide React icons
+- React Router DOM
+- React Hook Form + Zod (for forms)
+- Supabase (backend)
+
+FORBIDDEN — DO NOT USE UNDER ANY CIRCUMSTANCES:
+- Next.js, Nuxt, Angular, Vue, Svelte, SolidJS, or any other framework
+- Express, Fastify, Koa, or any Node.js server runtime
+- CSS Modules, styled-components, Emotion, or CSS-in-JS libraries
+- Material UI, Ant Design, Chakra UI, or non-shadcn component libraries
+- jQuery, Lodash (unless already installed), or legacy libraries
+- Any package not already in the project's package.json
+
+STRUCTURAL RULES:
+- NEVER restructure, rename, or reorganize files the user didn't ask to change
+- NEVER change the project's routing structure unless explicitly asked
+- NEVER modify build configuration files
+- NEVER add new npm dependencies without explicit user request
+- Use ONLY semantic Tailwind tokens (bg-background, text-foreground, text-primary, etc.)
+- Use ONLY HSL format for CSS custom properties
+- Keep ALL existing imports, exports, and type definitions intact
+`;
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -86,20 +152,38 @@ serve(async (req) => {
     const settings = await getUserSettings(supabase, userId);
     
     let model = requestedModel || settings?.ai_provider || "google/gemini-3-flash-preview";
-    
-    if (!LOVABLE_MODELS.includes(model)) {
-      model = "google/gemini-3-flash-preview";
+    let apiKey = "";
+    let endpoint = LOVABLE_ENDPOINT;
+
+    // Determine routing: custom key vs Lovable gateway
+    if (settings?.use_custom_key && settings?.custom_api_key && settings?.custom_provider) {
+      const provider = settings.custom_provider;
+      apiKey = settings.custom_api_key;
+
+      if (provider === "openai") {
+        endpoint = OPENAI_ENDPOINT;
+        model = MODEL_MAP_OPENAI[model] || "gpt-4o-mini";
+      } else if (provider === "gemini") {
+        endpoint = GEMINI_ENDPOINT;
+        model = MODEL_MAP_GEMINI[model] || "gemini-2.5-flash";
+      }
+    } else {
+      // Use Lovable gateway
+      if (!LOVABLE_MODELS.includes(model)) {
+        model = "google/gemini-3-flash-preview";
+      }
+      apiKey = Deno.env.get("LOVABLE_API_KEY") || "";
     }
 
-    const apiKey = Deno.env.get("LOVABLE_API_KEY") || "";
-
     if (!apiKey) {
-      return new Response(JSON.stringify({ error: "AI not configured." }), {
+      return new Response(JSON.stringify({ error: "AI not configured. Add an API key in Settings or contact support." }), {
         status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
     const systemPrompt = `You are Danspace AI, an expert code assistant integrated into a code editor. You analyze codebases and help developers understand and modify their code.
+
+${STACK_CONSTRAINTS}
 
 CRITICAL RULES FOR FILE MODIFICATIONS:
 When the user asks you to modify, fix, add, or change code in files, you MUST follow this process:
@@ -150,6 +234,7 @@ MANDATORY SAFETY RULES — VIOLATIONS WILL BREAK THE APPLICATION:
    - Is the JSX properly balanced (every opening tag has a closing tag)?
    - Are all TypeScript types still correct?
    - Did you ONLY change what the user asked for?
+   - Are you using ONLY React, Tailwind, shadcn, Lucide — no other frameworks?
 
 8. If the user is just asking questions (not requesting modifications), respond normally without patches.
 
@@ -163,7 +248,7 @@ ${fileContext ? `\nCurrent file context:\n${fileContext}` : ""}`;
       })),
     ];
 
-    const rawReply = await callAI(apiKey, LOVABLE_ENDPOINT, model, aiMessages);
+    const rawReply = await callAI(apiKey, endpoint, model, aiMessages);
 
     // Parse response: check for json-patches block
     const patchMatch = rawReply.match(/```json-patches\s*\n([\s\S]*?)\n```/);
@@ -175,14 +260,20 @@ ${fileContext ? `\nCurrent file context:\n${fileContext}` : ""}`;
         
         // Filter out any patches targeting protected files
         const safePatches = (patchData.patches || []).filter(
-          (p: { file: string }) => !isProtectedFile(p.file)
+          (p: { file: string; content: string }) => {
+            if (isProtectedFile(p.file)) return false;
+            // Check for forbidden framework imports
+            const forbidden = hasForbiddenImports(p.content || "");
+            if (forbidden.length > 0) return false;
+            return true;
+          }
         );
         const blockedFiles = (patchData.patches || [])
-          .filter((p: { file: string }) => isProtectedFile(p.file))
+          .filter((p: { file: string; content: string }) => isProtectedFile(p.file) || hasForbiddenImports(p.content || "").length > 0)
           .map((p: { file: string }) => p.file);
         
         const warning = blockedFiles.length > 0
-          ? `\n\n⚠️ Le modifiche ai seguenti file protetti sono state bloccate: ${blockedFiles.join(", ")}`
+          ? `\n\n⚠️ Le modifiche ai seguenti file sono state bloccate (file protetti o framework non consentiti): ${blockedFiles.join(", ")}`
           : "";
         
         return new Response(JSON.stringify({

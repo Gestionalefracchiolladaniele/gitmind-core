@@ -324,21 +324,40 @@ serve(async (req) => {
       // ===== USER SETTINGS =====
       case "settings.get": {
         const { userId } = body;
-        const { data, error } = await supabase.from("user_settings").select("ai_provider, custom_api_key, api_token").eq("user_id", userId).single();
+        const { data, error } = await supabase.from("user_settings").select("ai_provider, api_token, use_custom_key, custom_provider, custom_api_key").eq("user_id", userId).single();
         if (error && error.code !== "PGRST116") throw error;
-        result = data || { ai_provider: "lovable", custom_api_key: null, api_token: null };
+        if (data) {
+          // Never return full API key — only mask
+          const hasKey = !!data.custom_api_key;
+          const keyMask = hasKey ? '••••' + (data.custom_api_key as string).slice(-4) : null;
+          result = {
+            ai_provider: data.ai_provider,
+            api_token: data.api_token,
+            use_custom_key: data.use_custom_key || false,
+            custom_provider: data.custom_provider || null,
+            has_custom_key: hasKey,
+            key_mask: keyMask,
+            custom_api_key: null, // never expose
+          };
+        } else {
+          result = { ai_provider: "lovable", custom_api_key: null, api_token: null, use_custom_key: false, custom_provider: null, has_custom_key: false, key_mask: null };
+        }
         break;
       }
 
       case "settings.save": {
-        const { userId, ai_provider, custom_api_key } = body;
-        // Upsert
+        const { userId, ai_provider, custom_api_key, use_custom_key, custom_provider } = body;
+        const updateData: Record<string, unknown> = { ai_provider, use_custom_key: use_custom_key || false, custom_provider: custom_provider || null };
+        // Only update custom_api_key if explicitly provided (non-undefined)
+        if (custom_api_key !== undefined) {
+          updateData.custom_api_key = custom_api_key;
+        }
         const { data: existing } = await supabase.from("user_settings").select("id").eq("user_id", userId).single();
         if (existing) {
-          const { error } = await supabase.from("user_settings").update({ ai_provider, custom_api_key }).eq("user_id", userId);
+          const { error } = await supabase.from("user_settings").update(updateData).eq("user_id", userId);
           if (error) throw error;
         } else {
-          const { error } = await supabase.from("user_settings").insert({ user_id: userId, ai_provider, custom_api_key });
+          const { error } = await supabase.from("user_settings").insert({ user_id: userId, ...updateData });
           if (error) throw error;
         }
         result = { success: true };

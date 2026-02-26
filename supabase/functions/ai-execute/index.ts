@@ -160,6 +160,14 @@ serve(async (req) => {
 5. Each file diff must start with "--- a/<filepath>" and "+++ b/<filepath>"
 6. Use proper @@ hunk headers.
 
+TECHNOLOGY CONSTRAINTS — ABSOLUTELY MANDATORY:
+- Use ONLY: React 18, TypeScript, Vite, Tailwind CSS, shadcn/ui, Lucide icons, React Router DOM
+- FORBIDDEN: Next.js, Vue, Angular, Svelte, Express, CSS Modules, styled-components, Material UI, jQuery
+- NEVER add new npm dependencies without explicit user request
+- NEVER restructure files the user didn't ask to change
+- Use ONLY semantic Tailwind tokens (bg-background, text-foreground, etc.)
+- Preserve ALL existing imports, types, and exports exactly as they are
+
 Intent: ${intentType}
 User request: ${userPrompt}
 
