@@ -103,7 +103,7 @@ const Dashboard = () => {
             )}
             <div className="flex items-center gap-2 rounded-lg bg-secondary/50 px-3 py-1.5 text-xs text-muted-foreground">
               <Database className="h-3 w-3" />
-              <span>{repos.length}/5 repos</span>
+              <span>{repos.length}/50 repos</span>
             </div>
             <Button variant="ghost" size="sm" onClick={() => navigate('/settings')}>
               <Settings className="h-4 w-4" />
