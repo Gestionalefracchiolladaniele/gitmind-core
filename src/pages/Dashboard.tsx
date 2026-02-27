@@ -223,7 +223,7 @@ const Dashboard = () => {
                 </button>
                 <button
                   onClick={(e) => { e.stopPropagation(); handleDelete(repo.id); }}
-                  className="absolute top-3 right-3 p-1.5 rounded-md opacity-0 group-hover:opacity-100 hover:bg-destructive/10 transition-default"
+                  className="absolute bottom-3 right-3 p-1.5 rounded-md opacity-0 group-hover:opacity-100 hover:bg-destructive/10 transition-default"
                 >
                   <Trash2 className="h-3.5 w-3.5 text-destructive" />
                 </button>
