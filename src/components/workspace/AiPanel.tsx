@@ -151,8 +151,8 @@ const AiPanel = ({ sessionState, onStateChange, session, repo, userId, openFiles
   const buildFileContext = useCallback(() => {
     // Use open files if available, otherwise use auto-fetched context
     const contextFiles = openFiles.length > 0 
-      ? openFiles.filter(f => fileContents[f]).map(f => ({ path: f, content: fileContents[f] }))
-      : Object.entries(autoContextFiles).map(([path, content]) => ({ path, content }));
+      ? openFiles.filter(f => fileContents[f]).map(f => ({ path: f, content: fileContents[f] as string }))
+      : Object.entries(autoContextFiles).map(([path, content]) => ({ path, content: content as string }));
 
     const ctx = contextFiles
       .map(f => `--- ${f.path} ---\n${f.content}`)
