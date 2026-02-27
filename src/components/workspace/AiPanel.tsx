@@ -382,7 +382,7 @@ const AiPanel = ({ sessionState, onStateChange, session, repo, userId, openFiles
           .filter(f => fileContents[f])
           .map(f => ({ path: f, content: fileContents[f] }));
       } else {
-        filesToSend = Object.entries(autoContextFiles).map(([path, content]) => ({ path, content }));
+        filesToSend = Object.entries(autoContextFiles).map(([path, content]) => ({ path, content: content as string }));
       }
 
       if (filesToSend.length === 0) {
