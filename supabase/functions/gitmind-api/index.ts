@@ -134,8 +134,8 @@ serve(async (req) => {
       case "repo.attach": {
         const { userId, owner, name } = body;
         const { count } = await supabase.from("repositories").select("*", { count: "exact", head: true }).eq("user_id", userId);
-        if (count && count >= 5) {
-          return new Response(JSON.stringify({ error: "Max 5 repositories allowed" }), {
+        if (count && count >= 50) {
+          return new Response(JSON.stringify({ error: "Max 50 repositories allowed" }), {
             status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
           });
         }

@@ -291,8 +291,8 @@ ${fileContext ? `\nCurrent file context:\n${fileContext}` : ""}`;
     return new Response(JSON.stringify({ reply: rawReply }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
-  } catch (error) {
-    const msg = error.message || "Unknown error";
+  } catch (error: unknown) {
+    const msg = (error as Error).message || "Unknown error";
     if (msg === "RATE_LIMITED") {
       return new Response(JSON.stringify({ error: "Rate limit exceeded. Try again later." }), {
         status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
