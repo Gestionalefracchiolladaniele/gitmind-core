@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Send, Zap, MessageSquare, Play, Loader2, Bot, CheckCircle, AlertTriangle, RotateCcw, FileCode, GitCommit } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { Button } from '@/components/ui/button';
@@ -42,6 +42,11 @@ function isClientProtectedFile(path: string): boolean {
   return CLIENT_PROTECTED_PATTERNS.some(p => p.test(path));
 }
 
+// Relevant file extensions for auto-context
+const RELEVANT_EXTENSIONS = ['.tsx', '.ts', '.css', '.jsx', '.js'];
+const MAX_AUTO_CONTEXT_FILES = 8;
+const MAX_AUTO_FILE_SIZE = 50000; // 50KB
+
 interface AiPanelProps {
   sessionState: SessionState;
   onStateChange: (state: SessionState) => void;
@@ -51,9 +56,10 @@ interface AiPanelProps {
   openFiles: string[];
   fileContents: Record<string, string>;
   onFileContentsUpdate?: (updates: Record<string, string>) => void;
+  repoTree?: { path: string; size: number }[];
 }
 
-const AiPanel = ({ sessionState, onStateChange, session, repo, userId, openFiles, fileContents, onFileContentsUpdate }: AiPanelProps) => {
+const AiPanel = ({ sessionState, onStateChange, session, repo, userId, openFiles, fileContents, onFileContentsUpdate, repoTree }: AiPanelProps) => {
   const [messages, setMessages] = useState<DbMessage[]>([]);
   const [input, setInput] = useState('');
   const [actionInput, setActionInput] = useState('');
@@ -66,6 +72,8 @@ const AiPanel = ({ sessionState, onStateChange, session, repo, userId, openFiles
   const [revertDialog, setRevertDialog] = useState<{ messageId: string; fileContext: Record<string, string> } | null>(null);
   const [reverting, setReverting] = useState(false);
   const [pipelineState, setPipelineState] = useState<SessionState>('IDLE');
+  const [autoContextFiles, setAutoContextFiles] = useState<Record<string, string>>({});
+  const [loadingAutoContext, setLoadingAutoContext] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
@@ -76,7 +84,7 @@ const AiPanel = ({ sessionState, onStateChange, session, repo, userId, openFiles
     api.getChatMessages(session.id)
       .then(({ messages: msgs }) => {
         if (msgs.length === 0) {
-          const welcomeContent = 'Salama';
+          const welcomeContent = 'Ciao! Sono il tuo assistente AI. Posso aiutarti con il codice del tuo progetto. Chiedi pure!';
           api.saveChatMessage(session.id, 'assistant', welcomeContent).then(({ message }) => {
             setMessages([message]);
           });
@@ -88,26 +96,83 @@ const AiPanel = ({ sessionState, onStateChange, session, repo, userId, openFiles
       .finally(() => setLoadingHistory(false));
   }, [session?.id]);
 
+  // Auto-fetch relevant files from repo tree when no files are open
+  useEffect(() => {
+    if (!repoTree || repoTree.length === 0 || !repo || !userId) return;
+    // Only auto-fetch if no files are manually opened
+    if (openFiles.length > 0) return;
+
+    const relevantFiles = repoTree
+      .filter(f => {
+        const ext = '.' + f.path.split('.').pop();
+        return RELEVANT_EXTENSIONS.includes(ext) && 
+               f.path.startsWith('src/') && 
+               f.size < MAX_AUTO_FILE_SIZE &&
+               !f.path.includes('node_modules') &&
+               !f.path.includes('.test.') &&
+               !f.path.includes('.spec.');
+      })
+      .sort((a, b) => {
+        // Prioritize: pages > components > lib > hooks > other
+        const priority = (p: string) => {
+          if (p.includes('/pages/')) return 0;
+          if (p.includes('/components/') && !p.includes('/ui/')) return 1;
+          if (p.includes('/lib/')) return 2;
+          if (p.includes('/hooks/')) return 3;
+          return 4;
+        };
+        return priority(a.path) - priority(b.path);
+      })
+      .slice(0, MAX_AUTO_CONTEXT_FILES);
+
+    if (relevantFiles.length === 0) return;
+
+    setLoadingAutoContext(true);
+    Promise.all(
+      relevantFiles.map(f => 
+        api.fetchFile(userId, repo.owner, repo.name, f.path)
+          .then(({ content }) => ({ path: f.path, content }))
+          .catch(() => null)
+      )
+    ).then(results => {
+      const ctx: Record<string, string> = {};
+      results.forEach(r => {
+        if (r) ctx[r.path] = r.content;
+      });
+      setAutoContextFiles(ctx);
+    }).finally(() => setLoadingAutoContext(false));
+  }, [repoTree, repo, userId, openFiles.length]);
+
   // Auto-scroll
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
   }, [messages, isChatting]);
 
-  const buildFileContext = () => {
-    const ctx = openFiles
-      .filter(f => fileContents[f])
-      .map(f => `--- ${f} ---\n${fileContents[f]}`)
+  const buildFileContext = useCallback(() => {
+    // Use open files if available, otherwise use auto-fetched context
+    const contextFiles = openFiles.length > 0 
+      ? openFiles.filter(f => fileContents[f]).map(f => ({ path: f, content: fileContents[f] }))
+      : Object.entries(autoContextFiles).map(([path, content]) => ({ path, content }));
+
+    const ctx = contextFiles
+      .map(f => `--- ${f.path} ---\n${f.content}`)
       .join('\n\n');
     return ctx || undefined;
-  };
+  }, [openFiles, fileContents, autoContextFiles]);
 
-  const buildFileSnapshot = (): Record<string, string> | undefined => {
+  const buildFileSnapshot = useCallback((): Record<string, string> | undefined => {
     const snapshot: Record<string, string> = {};
-    openFiles.forEach(f => {
-      if (fileContents[f]) snapshot[f] = fileContents[f];
-    });
+    if (openFiles.length > 0) {
+      openFiles.forEach(f => {
+        if (fileContents[f]) snapshot[f] = fileContents[f];
+      });
+    } else {
+      Object.entries(autoContextFiles).forEach(([path, content]) => {
+        snapshot[path] = content;
+      });
+    }
     return Object.keys(snapshot).length > 0 ? snapshot : undefined;
-  };
+  }, [openFiles, fileContents, autoContextFiles]);
 
   // --- AI Chat with patch support ---
   const handleSendChat = async () => {
@@ -120,11 +185,6 @@ const AiPanel = ({ sessionState, onStateChange, session, repo, userId, openFiles
       const fileSnapshot = buildFileSnapshot();
       const { message: savedUserMsg } = await api.saveChatMessage(session.id, 'user', userContent, fileSnapshot);
       setMessages(prev => [...prev, savedUserMsg]);
-
-      toast({
-        title: 'Messaggio salvato',
-        description: 'Il tuo messaggio � stato salvato correttamente.',
-      });
 
       const allMsgs = [...messages, savedUserMsg];
       const chatMessages = allMsgs.map(m => ({ role: m.role, content: m.content }));
@@ -139,7 +199,7 @@ const AiPanel = ({ sessionState, onStateChange, session, repo, userId, openFiles
       // If patches are present, store them for user to apply
       if (response.patches && response.patches.length > 0) {
         setPendingPatches({
-          msgIdx: messages.length + 2, // after user + assistant
+          msgIdx: messages.length + 2,
           patches: response.patches,
           commitMessage: response.commitMessage || '[Danspace] AI changes',
         });
@@ -155,13 +215,14 @@ const AiPanel = ({ sessionState, onStateChange, session, repo, userId, openFiles
     }
   };
 
-  // --- Apply patches ---
+  // --- Apply patches (multi-file with report + chat message) ---
   const handleApplyPatches = async () => {
     if (!pendingPatches || !repo || !userId) return;
     setApplyingPatches(true);
     
     try {
       const updates: Record<string, string> = {};
+      const failures: string[] = [];
       
       // Client-side: filter out protected files
       const blockedFiles = pendingPatches.patches.filter(p => isClientProtectedFile(p.file));
@@ -183,9 +244,15 @@ const AiPanel = ({ sessionState, onStateChange, session, repo, userId, openFiles
       }
       
       for (const patch of safePatches) {
-        // Get current SHA for the file
         try {
-          const fileData = await api.fetchFile(userId, repo.owner, repo.name, patch.file);
+          // Get current SHA for the file (or handle new files)
+          let sha = '';
+          try {
+            const fileData = await api.fetchFile(userId, repo.owner, repo.name, patch.file);
+            sha = fileData.sha;
+          } catch {
+            // File doesn't exist yet — new file commit (sha empty)
+          }
           await api.commitFile({
             userId,
             owner: repo.owner,
@@ -193,11 +260,12 @@ const AiPanel = ({ sessionState, onStateChange, session, repo, userId, openFiles
             path: patch.file,
             content: patch.content,
             message: pendingPatches.commitMessage,
-            sha: fileData.sha,
+            sha,
             sessionId: session?.id,
           });
           updates[patch.file] = patch.content;
         } catch (e: any) {
+          failures.push(patch.file);
           toast({ title: `Errore su ${patch.file}`, description: e.message, variant: 'destructive' });
         }
       }
@@ -207,9 +275,20 @@ const AiPanel = ({ sessionState, onStateChange, session, repo, userId, openFiles
         onFileContentsUpdate(updates);
       }
 
+      const successCount = Object.keys(updates).length;
+      const resultMsg = failures.length > 0
+        ? `✅ Modifica applicata: ${successCount} file aggiornati su GitHub. ⚠️ ${failures.length} file falliti: ${failures.join(', ')}`
+        : `✅ Modifica applicata: ${successCount} file aggiornati su GitHub.`;
+
+      // Save confirmation message in chat
+      if (session) {
+        const { message: confirmMsg } = await api.saveChatMessage(session.id, 'assistant', resultMsg);
+        setMessages(prev => [...prev, confirmMsg]);
+      }
+
       toast({
         title: 'Modifiche applicate',
-        description: `${Object.keys(updates).length} file aggiornati e committati su GitHub.`,
+        description: `${successCount} file aggiornati e committati su GitHub.`,
       });
       setPendingPatches(null);
     } catch (e: any) {
@@ -224,7 +303,6 @@ const AiPanel = ({ sessionState, onStateChange, session, repo, userId, openFiles
     if (msg.file_context && Object.keys(msg.file_context).length > 0) {
       setRevertDialog({ messageId: msg.id, fileContext: msg.file_context });
     } else {
-      // No file context, just revert messages
       handleRevertMessages(msg.id);
     }
   };
@@ -267,12 +345,10 @@ const AiPanel = ({ sessionState, onStateChange, session, repo, userId, openFiles
         }
       }
 
-      // Update local file contents
       if (onFileContentsUpdate && Object.keys(updates).length > 0) {
         onFileContentsUpdate(updates);
       }
 
-      // Revert messages in DB
       const { messages: reverted } = await api.revertToMessage(session.id, revertDialog.messageId);
       setMessages(reverted);
       setPendingPatches(null);
@@ -289,7 +365,7 @@ const AiPanel = ({ sessionState, onStateChange, session, repo, userId, openFiles
     }
   };
 
-  // --- AI Action Pipeline (local state management) ---
+  // --- AI Action Pipeline ---
   const handleExecuteAction = async () => {
     if (!actionInput.trim() || isProcessing || !session || !repo) return;
     setIsProcessing(true);
@@ -299,12 +375,18 @@ const AiPanel = ({ sessionState, onStateChange, session, repo, userId, openFiles
       setPipelineState('PLANNING');
       const intent = await api.normalizeIntent(actionInput);
 
-      const filesToSend = openFiles
-        .filter(f => fileContents[f])
-        .map(f => ({ path: f, content: fileContents[f] }));
+      // Use open files or auto-context files
+      let filesToSend: { path: string; content: string }[];
+      if (openFiles.length > 0) {
+        filesToSend = openFiles
+          .filter(f => fileContents[f])
+          .map(f => ({ path: f, content: fileContents[f] }));
+      } else {
+        filesToSend = Object.entries(autoContextFiles).map(([path, content]) => ({ path, content }));
+      }
 
       if (filesToSend.length === 0) {
-        throw new Error('Apri almeno un file prima di eseguire un\'azione.');
+        throw new Error('Nessun file disponibile come contesto. Apri almeno un file o attendi il caricamento automatico.');
       }
 
       setPipelineState('EXECUTING');
@@ -326,7 +408,6 @@ const AiPanel = ({ sessionState, onStateChange, session, repo, userId, openFiles
       setPipelineState('DONE');
       setActionInput('');
       
-      // Update backend state only on final result
       try { await api.transitionState(session.id, 'IDLE'); } catch {}
       
       toast({ title: 'Azione completata', description: result.commitMessage });
@@ -341,6 +422,11 @@ const AiPanel = ({ sessionState, onStateChange, session, repo, userId, openFiles
       setIsProcessing(false);
     }
   };
+
+  const contextFileCount = openFiles.length > 0 ? openFiles.length : Object.keys(autoContextFiles).length;
+  const contextLabel = openFiles.length > 0 
+    ? `${openFiles.length} file aperti come contesto` 
+    : `${Object.keys(autoContextFiles).length} file auto-caricati come contesto`;
 
   return (
     <div className="flex h-full flex-col bg-card">
@@ -487,10 +573,20 @@ const AiPanel = ({ sessionState, onStateChange, session, repo, userId, openFiles
             )}
           </div>
 
-          {openFiles.length > 0 && (
+          {/* Context indicator */}
+          {(contextFileCount > 0 || loadingAutoContext) && (
             <div className="border-t border-border px-3 py-1.5 flex items-center gap-1 text-[10px] text-muted-foreground">
-              <FileCode className="h-3 w-3" />
-              <span>{openFiles.length} file aperti come contesto</span>
+              {loadingAutoContext ? (
+                <>
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                  <span>Caricamento contesto automatico...</span>
+                </>
+              ) : (
+                <>
+                  <FileCode className="h-3 w-3" />
+                  <span>{contextLabel}</span>
+                </>
+              )}
             </div>
           )}
 
@@ -539,10 +635,10 @@ const AiPanel = ({ sessionState, onStateChange, session, repo, userId, openFiles
               </ol>
             </div>
 
-            {openFiles.length > 0 && (
+            {contextFileCount > 0 && (
               <div className="rounded-lg bg-secondary/30 p-3 text-xs">
-                <p className="text-muted-foreground mb-1.5">Contesto ({openFiles.length} file):</p>
-                {openFiles.map(f => (
+                <p className="text-muted-foreground mb-1.5">Contesto ({contextFileCount} file{openFiles.length === 0 ? ' - auto' : ''}):</p>
+                {(openFiles.length > 0 ? openFiles : Object.keys(autoContextFiles)).map(f => (
                   <p key={f} className="font-mono text-foreground/70 truncate">{f}</p>
                 ))}
               </div>
