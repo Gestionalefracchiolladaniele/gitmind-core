@@ -123,7 +123,7 @@ const Dashboard = () => {
           </div>
           <Dialog open={showAttach} onOpenChange={(open) => { setShowAttach(open); if (open) loadGitHubRepos(); }}>
             <DialogTrigger asChild>
-              <Button disabled={repos.length >= 5} size="sm">
+              <Button disabled={repos.length >= 50} size="sm">
                 <Plus className="mr-2 h-4 w-4" />
                 Attach Repository
               </Button>

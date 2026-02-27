@@ -96,6 +96,26 @@ serve(async (req) => {
         break;
       }
 
+      case "session.findOrCreate": {
+        const { repoId, mode } = body;
+        // Find existing session for this repo+mode, ordered by most recent
+        const { data: existing } = await supabase
+          .from("sessions").select()
+          .eq("repo_id", repoId).eq("mode", mode || "chat")
+          .order("updated_at", { ascending: false })
+          .limit(1);
+
+        if (existing && existing.length > 0) {
+          result = { session: existing[0] };
+        } else {
+          const { data, error } = await supabase
+            .from("sessions").insert({ repo_id: repoId, mode: mode || "chat", state: "IDLE" }).select().single();
+          if (error) throw error;
+          result = { session: data };
+        }
+        break;
+      }
+
       case "session.get": {
         const { sessionId } = body;
         const { data, error } = await supabase.from("sessions").select().eq("id", sessionId).single();

@@ -35,6 +35,9 @@ export const api = {
   createSession: (repoId: string, mode: 'chat' | 'action' | 'autonomous') =>
     callEdge<{ session: Session }>('gitmind-api', { action: 'session.create', repoId, mode }),
 
+  findOrCreateSession: (repoId: string, mode: 'chat' | 'action' | 'autonomous' = 'chat') =>
+    callEdge<{ session: Session }>('gitmind-api', { action: 'session.findOrCreate', repoId, mode }),
+
   getSession: (sessionId: string) =>
     callEdge<{ session: Session }>('gitmind-api', { action: 'session.get', sessionId }),
 
