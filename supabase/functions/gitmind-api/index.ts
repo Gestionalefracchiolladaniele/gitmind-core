@@ -96,6 +96,26 @@ serve(async (req) => {
         break;
       }
 
+      case "session.findOrCreate": {
+        const { repoId, mode } = body;
+        // Find existing session for this repo+mode, ordered by most recent
+        const { data: existing } = await supabase
+          .from("sessions").select()
+          .eq("repo_id", repoId).eq("mode", mode || "chat")
+          .order("updated_at", { ascending: false })
+          .limit(1);
+
+        if (existing && existing.length > 0) {
+          result = { session: existing[0] };
+        } else {
+          const { data, error } = await supabase
+            .from("sessions").insert({ repo_id: repoId, mode: mode || "chat", state: "IDLE" }).select().single();
+          if (error) throw error;
+          result = { session: data };
+        }
+        break;
+      }
+
       case "session.get": {
         const { sessionId } = body;
         const { data, error } = await supabase.from("sessions").select().eq("id", sessionId).single();
@@ -134,8 +154,8 @@ serve(async (req) => {
       case "repo.attach": {
         const { userId, owner, name } = body;
         const { count } = await supabase.from("repositories").select("*", { count: "exact", head: true }).eq("user_id", userId);
-        if (count && count >= 5) {
-          return new Response(JSON.stringify({ error: "Max 5 repositories allowed" }), {
+        if (count && count >= 50) {
+          return new Response(JSON.stringify({ error: "Max 50 repositories allowed" }), {
             status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
           });
         }
@@ -152,8 +172,8 @@ serve(async (req) => {
             }).select().single();
             if (error) throw error;
             result = { repository: data };
-          } catch (e) {
-            return new Response(JSON.stringify({ error: `GitHub: ${e.message}` }), {
+          } catch (e: unknown) {
+            return new Response(JSON.stringify({ error: `GitHub: ${(e as Error).message}` }), {
               status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
             });
           }
@@ -417,8 +437,8 @@ serve(async (req) => {
     return new Response(JSON.stringify(result), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
-  } catch (error) {
-    return new Response(JSON.stringify({ error: error.message }), {
+  } catch (error: unknown) {
+    return new Response(JSON.stringify({ error: (error as Error).message }), {
       status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }

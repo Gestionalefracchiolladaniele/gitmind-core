@@ -103,7 +103,7 @@ const Dashboard = () => {
             )}
             <div className="flex items-center gap-2 rounded-lg bg-secondary/50 px-3 py-1.5 text-xs text-muted-foreground">
               <Database className="h-3 w-3" />
-              <span>{repos.length}/5 repos</span>
+              <span>{repos.length}/50 repos</span>
             </div>
             <Button variant="ghost" size="sm" onClick={() => navigate('/settings')}>
               <Settings className="h-4 w-4" />
@@ -123,7 +123,7 @@ const Dashboard = () => {
           </div>
           <Dialog open={showAttach} onOpenChange={(open) => { setShowAttach(open); if (open) loadGitHubRepos(); }}>
             <DialogTrigger asChild>
-              <Button disabled={repos.length >= 5} size="sm">
+              <Button disabled={repos.length >= 50} size="sm">
                 <Plus className="mr-2 h-4 w-4" />
                 Attach Repository
               </Button>
@@ -223,7 +223,7 @@ const Dashboard = () => {
                 </button>
                 <button
                   onClick={(e) => { e.stopPropagation(); handleDelete(repo.id); }}
-                  className="absolute top-3 right-3 p-1.5 rounded-md opacity-0 group-hover:opacity-100 hover:bg-destructive/10 transition-default"
+                  className="absolute bottom-3 right-3 p-1.5 rounded-md opacity-0 group-hover:opacity-100 hover:bg-destructive/10 transition-default"
                 >
                   <Trash2 className="h-3.5 w-3.5 text-destructive" />
                 </button>

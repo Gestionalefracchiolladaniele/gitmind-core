@@ -22,6 +22,7 @@ const Workspace = () => {
   const [repo, setRepo] = useState<Repository | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const [repoTree, setRepoTree] = useState<{ path: string; size: number }[]>([]);
 
   useEffect(() => {
     if (!user) { navigate('/'); return; }
@@ -35,10 +36,18 @@ const Workspace = () => {
       const found = repositories.find(r => r.id === repoId);
       if (found) {
         setRepo(found);
-        // Create a session for this repo
-        const { session } = await api.createSession(found.id, 'chat');
+        // Use findOrCreate to reuse existing chat session
+        const { session } = await api.findOrCreateSession(found.id, 'chat');
         setSession(session);
         setSessionState(session.state as SessionState);
+
+        // Fetch repo tree for auto-context
+        try {
+          const { files } = await api.fetchTree(user.id, found.owner, found.name);
+          setRepoTree(files);
+        } catch (e) {
+          console.error('Failed to fetch tree:', e);
+        }
       }
     } catch (e) {
       console.error('Failed to load workspace:', e);
@@ -160,6 +169,7 @@ const Workspace = () => {
               openFiles={openFiles}
               fileContents={fileContents}
               onFileContentsUpdate={handleFileContentsUpdate}
+              repoTree={repoTree}
             />
           </div>
         )}
