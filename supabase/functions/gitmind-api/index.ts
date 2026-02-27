@@ -152,8 +152,8 @@ serve(async (req) => {
             }).select().single();
             if (error) throw error;
             result = { repository: data };
-          } catch (e) {
-            return new Response(JSON.stringify({ error: `GitHub: ${e.message}` }), {
+          } catch (e: unknown) {
+            return new Response(JSON.stringify({ error: `GitHub: ${(e as Error).message}` }), {
               status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
             });
           }
