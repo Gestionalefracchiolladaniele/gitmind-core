@@ -168,7 +168,7 @@ const AiPanel = ({ sessionState, onStateChange, session, repo, userId, openFiles
       });
     } else {
       Object.entries(autoContextFiles).forEach(([path, content]) => {
-        snapshot[path] = content;
+        snapshot[path] = content as string;
       });
     }
     return Object.keys(snapshot).length > 0 ? snapshot : undefined;
